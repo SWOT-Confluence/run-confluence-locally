@@ -58,10 +58,10 @@
 
 
 ### Results and Reminders
-a. Modules MUST be run in serial and are dependent on each other (algorithm modules can be run in any order within the larger sequence)
-b. Thus, any change to an early module or reaches_of_interest.json requires an entirely new confluence directory _mnt creation
-c. Results for setfinder through combine_data can be found in xxx_mnt/input/, hydrocron data can be found in xxx_mnt/input/swot/, prediagnostics in xxx_mnt/diagnostics, each algo results as format *reach_id*_*algo*.nc in xxx_mnt/flpe/*algo*, all results collected as .nc files by continent in xxx_mnt/ouptut/
-d. To parse and organize discharge data, see 
+1. Modules MUST be run in serial and are dependent on each other (algorithm modules can be run in any order within the larger sequence)
+2. Thus, any change to an early module or reaches_of_interest.json requires an entirely new confluence directory _mnt creation
+3. Results for setfinder through combine_data can be found in xxx_mnt/input/, hydrocron data can be found in xxx_mnt/input/swot/, prediagnostics in xxx_mnt/diagnostics, each algo results as format *reach_id*_*algo*.nc in xxx_mnt/flpe/*algo*, all results collected as .nc files by continent in xxx_mnt/ouptut/
+4. To parse and organize discharge data, see 
     PO.DAAC cookbook for working with SOS:
     https://podaac.github.io/tutorials/notebooks/datasets/SWOT_L4_DAWG_SOS_DISCHARGE.html#navigating-reaches-and-nodes
     
