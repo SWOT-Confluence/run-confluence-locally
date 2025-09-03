@@ -36,7 +36,7 @@
 
 
 ### Run Confluence (HPC)
-6. Run the "Confluence Module SLURM Script Generator" section of this notebook on your HPC to create SLURM submission scripts for each module
+6. Run the "run_confluence_singularity_hpc" sections on your HPC that create SLURM submission scripts for each module
 (setup and run run-confluence-locally/run_confluence_HPC.ipynb to generate a submission script that defines job details)
 - creates sif (singularity) and sh_script (runs modules) and report (metadata and error) directories 
 
@@ -44,10 +44,8 @@
    - sbatch cfl_SLURM_wrapper.sh
 
 ### Run Confluence (LOCAL)
-6. Run the 'run_confluence_docker.ipynb' with the index to match either the number of jobs required for the module or the number of reaches in your reaches_of_interest.json file to create a local .sh script that will run with docker
+6. Run the 'run_confluence_docker_local.ipynb' sections to create a local .py scripts to run individual modules and/or a .sh script that will run with docker to execute multiple in your terminal
 
-7. Run the .sh script in your terminal from the sh_script directory
-    or bonus - create a bash script like the HPC script to run all 
 
 ### MAKE CHANGES TO CONFLUENCE 
 - Copy or clone module (local)
