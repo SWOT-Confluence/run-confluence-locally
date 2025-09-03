@@ -19,7 +19,8 @@ Choose either the HPC or local .ipynb notebook and follow these instructions
 3. Run the "Prepare Images Locally" section of this notebook locally
     - edit the run name (directory/module/tag name to point any customizations and specific run). Best if it is the same 'xxx' name as the confluence run if testing multiple changes
     - edit the modules to include or exclude depending on needs
-    - This can take some time initially
+    - edit the script_jobs and command dict names to correctly reflect your modules of interest
+    - This can take some time initially to build in docker
 
 ### Create Confluence Folder Structure where confluence results will live (LOCAL OR HPC)
 4. Download empty directory structure
