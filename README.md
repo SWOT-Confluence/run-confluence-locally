@@ -6,6 +6,7 @@
 * a python environment
 
 # INSTRUCTIONS
+Choose either the HPC or local .ipynb notebook and follow these instructions 
 
 ### Access Confluence Modules and Scripts (LOCAL)
 1. Fork and clone (locally, usually main branch) confluence modules - see bottom table for correct name/branch 
