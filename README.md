@@ -40,27 +40,27 @@ These instructions provide an overall description for running confluence and can
   5. Rename confluence_empty to confluence_xxx and empty_mnt one level below to xxx_mnt so that 'xxx' is the same as parent confluence_xxx folder tag name
 
 Here is an example of the initial and renamed folder structure with important files highlighted
-confluence_xxx
-├── empty_xxx
-│   ├── diagnostics
-│   ├── flpe
-│   │   ├── geobam
-│   │   ├── hivdi
-│   │   ├── metroman
-│   │   │   └── sets
-│   │   ├── momma
-│   │   ├── sad
-│   │   └── sic4dvar
-│   ├── input
-│   │   └── reaches_of_interest.json
-│   ├── logs
-│   ├── mnt_dirs.sh
-│   ├── moi
-│   ├── offline
-│   ├── output
-│   └── validation
-├── report
-└── sif
+confluence_xxx  
+├── empty_xxx  
+│   ├── diagnostics  
+│   ├── flpe  
+│   │   ├── geobam  
+│   │   ├── hivdi  
+│   │   ├── metroman  
+│   │   │   └── sets  
+│   │   ├── momma  
+│   │   ├── sad  
+│   │   └── sic4dvar  
+│   ├── input  
+│   │   └── reaches_of_interest.json  
+│   ├── logs  
+│   ├── mnt_dirs.sh  
+│   ├── moi  
+│   ├── offline  
+│   ├── output  
+│   └── validation  
+├── report  
+└── sif  
 
 ##### Choose reaches to process
   6. Edit xxx_mnt/input/reaches_of_interest.json to be a list of reaches you want to process. Leave it as it is to target the devset. 
