@@ -1,12 +1,12 @@
 # REQUIREMENTS
 
 * docker installed locally - somewhere where you have sudo priveledges to the point where "docker --version" completes successfully (Install: https://docs.docker.com/engine/install/)
-* a dockerhub account (free)
+* a dockerhub account (free) and Docker Desktop on your local computer
 * singularity or apptainer installed on your HPC
 * a python environment
 
 # INSTRUCTIONS
-Choose either the HPC or local .ipynb notebook and follow these instructions 
+These instructions provide an overall description for running confluence and can be paired with either the local or HPC notebook. In parentheses I indicate where to run the associated functions or where to place downloaded folders. For best results, choose either the HPC or local .ipynb notebook and then follow along. If running on an HPC, the notebook must exist in a local directory for the first few steps and also exist in the HPC to interact with singularity. 
 
 ### Access Confluence Modules and Scripts (LOCAL)
 1. Fork and clone (locally, usually main branch) confluence modules - see bottom table for correct name/branch 
@@ -15,23 +15,53 @@ Choose either the HPC or local .ipynb notebook and follow these instructions
 2. Fork and clone scripts to run confluence modules
    i.e. git clone https://github.com/SWOT-Confluence/run-confluence-locally.git
 
+3. Rename a few modules for ease of use:
+   - MOI -> moi
+   - Validation -> validation
+   - offline-discharge-data-product-creation -> offline
+
 ### Prepare Confluene Module Images using Docker (LOCAL)
 3. Run the "Prepare Images Locally" section of this notebook locally
     - edit the run name (directory/module/tag name to point any customizations and specific run). Best if it is the same 'xxx' name as the confluence run if testing multiple changes
     - edit the modules to include or exclude depending on needs
+         **NOTE** setfinder and combine_data are run twice as 'expanded_*' and 'non_expanded_*', but they are only built in docker once
     - edit the script_jobs and command dict names to correctly reflect your modules of interest
     - This can take some time initially to build in docker
+    - Check your work in Docker Desktop (you should see images appearing in your docker account)
 
 ### Create Confluence Folder Structure where confluence results will live (LOCAL OR HPC)
 4. Download empty directory structure
 
-  (pip or conda) install gdown
-  gdown 16FdIV0xyaQaNfvxR7OJ_p8ljaI9gv1pu
-  tar -xzvf {whichever tar.gz you downloaded} and then rename to confluence_xxx
+  (pip or conda) install gdown  
+  gdown 16FdIV0xyaQaNfvxR7OJ_p8ljaI9gv1pu  
+  tar -xzvf {whichever tar.gz you downloaded} and then rename to confluence_xxx  
 
 ##### Customize confluence run
-  5. Rename empty_mnt one level below to xxx_mnt so that 'xxx' is the same as parent confluence_xxx folder tag name
-  
+  5. Rename confluence_empty to confluence_xxx and empty_mnt one level below to xxx_mnt so that 'xxx' is the same as parent confluence_xxx folder tag name
+
+Here is an example of the initial and renamed folder structure with important files highlighted
+confluence_xxx
+  ├── empty_xxx
+  │   ├── diagnostics
+  │   ├── flpe
+  │   │   ├── geobam
+  │   │   ├── hivdi
+  │   │   ├── metroman
+  │   │   │   └── sets
+  │   │   ├── momma
+  │   │   ├── sad
+  │   │   └── sic4dvar
+  │   ├── input
+  │   │   ├── reaches_of_interest.json
+  │   ├── logs
+  │   ├── mnt_dirs.sh
+  │   ├── moi
+  │   ├── offline
+  │   ├── output
+  │   └── validation
+  ├── report
+  └── sif
+
 ##### Choose reaches to process
   6. Edit xxx_mnt/input/reaches_of_interest.json to be a list of reaches you want to process. Leave it as it is to target the devset. 
       NOTE: ***HIGHLY SUGGESTED FOR FIRST RUN*** Priors takes a long time, if you do not need to build it, replace with the latest .nc priors files (one per continent) in /xxx_mnt/input/sos/priors/
