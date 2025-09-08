@@ -41,26 +41,26 @@ These instructions provide an overall description for running confluence and can
 
 Here is an example of the initial and renamed folder structure with important files highlighted
 confluence_xxx
-  ├── empty_xxx
-  │   ├── diagnostics
-  │   ├── flpe
-  │   │   ├── geobam
-  │   │   ├── hivdi
-  │   │   ├── metroman
-  │   │   │   └── sets
-  │   │   ├── momma
-  │   │   ├── sad
-  │   │   └── sic4dvar
-  │   ├── input
-  │   │   ├── reaches_of_interest.json
-  │   ├── logs
-  │   ├── mnt_dirs.sh
-  │   ├── moi
-  │   ├── offline
-  │   ├── output
-  │   └── validation
-  ├── report
-  └── sif
+├── empty_xxx
+│   ├── diagnostics
+│   ├── flpe
+│   │   ├── geobam
+│   │   ├── hivdi
+│   │   ├── metroman
+│   │   │   └── sets
+│   │   ├── momma
+│   │   ├── sad
+│   │   └── sic4dvar
+│   ├── input
+│   │   └── reaches_of_interest.json
+│   ├── logs
+│   ├── mnt_dirs.sh
+│   ├── moi
+│   ├── offline
+│   ├── output
+│   └── validation
+├── report
+└── sif
 
 ##### Choose reaches to process
   6. Edit xxx_mnt/input/reaches_of_interest.json to be a list of reaches you want to process. Leave it as it is to target the devset. 
