@@ -117,8 +117,7 @@ Scaling and Containerizing:
 | Metroman Consolidation              | main                | Number of Reaches                  | Takes the set level results of metroman and turns them into individual files, outputs to `/mnt/flpe/metroman`                                          |
 | Momma, BUSBOI, SAD, H2ivdi, Sic4dvar        | main   | Number of Reaches                  | Runs the corresponding FLPE algorithm                                                                                                                  |
 | MOI                                 | main                | Number of basins in `basins.json`  | Combines FLPE algorithm results (not currently working because of SWORD v16 topology issues)                                                           |
-| Offline (offline-discharge-data-product-creation)
-                             | main                | Number of Reaches                  | Runs NASA SDS's discharge algorithm                                                                                                                    |
+| Offline (offline-discharge-data-product-creation)  | main                | Number of Reaches                  | Runs NASA SDS's discharge algorithm                                                                                                                    |
 | Validation                          | main                | Number of Reaches                  | If there is a validation gauge on the reach then summary stats are produced. (All gauges are validation in unconstrained runs)                          |
 | Output                              | add-sword-version                | 6                                  | Outputs results netcdf files that store all previous results data, outputs to `/mnt/output/sos`                                                        |
 
