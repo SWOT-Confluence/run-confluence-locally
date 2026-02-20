@@ -48,7 +48,7 @@ confluence_xxx
 │   │   ├── momma  
 │   │   ├── sad  
 │   │   ├── consensus 
-│   │   └── sic4dvar  
+│   │   ├── sic4dvar  
 │   ├── input  
 │   │   └── reaches_of_interest.json  
 │   ├── logs  
