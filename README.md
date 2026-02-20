@@ -77,6 +77,9 @@ confluence_xxx
 ### Run Confluence (LOCAL)
 6. Run the 'run_confluence_docker_local.ipynb' sections to create a local .py scripts to run individual modules and/or a .sh script that will run with docker to execute multiple in your terminal
 
+### Run Confluence Parallelized
+- See bottom section; replace generate_slurm_scripts with generate_slurm_scripts_parallel
+- Edit MAX_WORKERS to fit your system
 
 ### MAKE CHANGES TO CONFLUENCE 
 Testing and Development:
