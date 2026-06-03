@@ -7,7 +7,6 @@ import yaml
 
 from .utils.module_images import clone_repos, create_singularity_defs, create_sifs
 
-
 def setup_dirs(cfg: dict):
     run_dir = Path(cfg['root_dir']).resolve() / f"confluence_{cfg['run_name']}"
 
