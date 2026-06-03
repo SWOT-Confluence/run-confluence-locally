@@ -1,0 +1,157 @@
+#!/bin/bash
+#SBATCH --job-name=confluence_{{ run_name }}
+#SBATCH --output={{ output_log_dir }}/{{ run_name }}_%j_%a.out
+#SBATCH --error={{ output_log_dir }}/{{ run_name }}_%j_%a.err
+#SBATCH --partition={{ partition }}
+#SBATCH --time=7-00:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=5G
+#SBATCH --account={{ account }}
+
+run='{{ run_name }}'
+echo "Run: $run"
+
+directory="{{ run_dir }}"
+
+# Parameters
+index_range={{ reach_chunks }}
+json_file="{{ json_file }}"
+expanded_json_file="{{ expanded_json_file }}"
+reach_json_file="{{ reach_json_file }}"
+basin_json_file="{{ basin_json_file }}"
+metroman_json_file="{{ metroman_json_file }}"
+default_jobs=$(jq length "$json_file")
+max_reaches={{ max_reaches | default(0) }}
+
+# Adjust to HPC requirements
+batch_size={{ batch_size }}
+concurrent_jobs={{ concurrent_jobs }}
+
+# Map specific script names to their job counts
+declare -A script_jobs=(
+{% for script, jobs in script_jobs.items() %}
+    [{{ script }}]={{ jobs }}
+{% endfor %}
+)
+
+scripts=(
+{% for script in scripts %}
+    "{{ script }}"
+{% endfor %}
+)
+
+for slurm_script in "${scripts[@]}"; do
+    echo "Starting submission for: $slurm_script"
+    date
+
+    num_jobs="${script_jobs[$slurm_script]}"
+
+    # Dynamic job count updates
+    if [[ -s "$expanded_json_file" && "$slurm_script" == "input.sh" ]]; then
+        num_jobs=$(jq length "$expanded_json_file")
+    fi
+
+    if [[ -s "$basin_json_file" && "$slurm_script" == "moi.sh" ]]; then
+        num_jobs=$(jq length "$basin_json_file")
+    fi
+
+    if [[ -s "$metroman_json_file" && "$slurm_script" == "metroman.sh" ]]; then
+        num_jobs=$(jq length "$metroman_json_file")
+    fi
+
+    if [[ -z "$num_jobs" || "$num_jobs" == "\$default_jobs" ]]; then
+        if [[ -s "$reach_json_file" ]]; then
+            num_jobs=$(jq length "$reach_json_file")
+            echo "Using reach_json_file job count ($num_jobs) for $slurm_script"
+        else
+            num_jobs=$default_jobs
+            echo "Using reaches_of_interest.json job count ($num_jobs) for $slurm_script"
+        fi
+    fi
+
+    if [[ -z "$num_jobs" ]]; then
+        echo "Warning: No job count found for $slurm_script. Skipping."
+        continue
+    fi
+
+    if [[ ! -v script_jobs["$slurm_script"] ]]; then
+        if [[ {{ max_reaches | default(0) }} -ne 0 && "$num_jobs" -gt {{ max_reaches | default(0) }} ]]; then
+            echo "Limiting job count for $slurm_script from $num_jobs to {{ max_reaches | default(0) }} (test mode)"
+            num_jobs={{ max_reaches | default(0) }}
+        fi
+    fi
+
+    start=0
+    while [ $start -lt $num_jobs ]; do
+        script_base="${slurm_script%.sh}"
+
+        # If the script has an explicitly defined job count in script_jobs,
+        # treat it as a fixed-count module (non-ranged).
+        # Otherwise assume it operates on reach ranges.
+        if [[ -v script_jobs["$slurm_script"] ]]; then
+            # Fixed-count module
+            current_range=1
+            target_reaches_per_batch=$batch_size
+        else
+            # Reach-ranged module
+            current_range=$index_range
+            target_reaches_per_batch=$(( batch_size * current_range ))
+        fi
+
+        reaches_remaining=$(( num_jobs - start ))
+        if [ $reaches_remaining -gt $target_reaches_per_batch ]; then
+            current_batch_reach_count=$target_reaches_per_batch
+        else
+            current_batch_reach_count=$reaches_remaining
+        fi
+        
+        num_tasks=$(( (current_batch_reach_count + current_range - 1) / current_range ))
+        last_task_index=$(( num_tasks - 1 ))
+        logical_end=$(( start + current_batch_reach_count - 1 ))
+
+        echo "Submitting $num_tasks tasks (Step: $current_range) for reaches $start to $logical_end"
+        
+
+        job_id=$(sbatch --export=OFFSET=${start},INDEX_RANGE=${current_range},MAX_LIMIT=${num_jobs} \
+               --array=0-${last_task_index}%${concurrent_jobs} \
+               "${directory}/${slurm_script}")
+        
+        job_id_number=$(echo $job_id | awk '{print $4}')
+
+        echo "Waiting for job array $job_id_number to finish..."
+
+        while squeue -j "$job_id_number" 2>/dev/null | grep -q "$job_id_number"; do
+            job_info=$(squeue -j "${job_id_number}[]" --noheader -o "%i %T %R")
+            held_tasks=$(echo "$job_info" | grep -i "requeued held" | awk '{print $1}')
+
+            if [[ -n "$held_tasks" ]]; then
+                echo "Detected held tasks in array $job_id_number:"
+                echo "$held_tasks"
+                for task in $held_tasks; do
+                    echo "Cancelling task $task..."
+                    scancel "$task"
+                done
+            fi
+
+            sleep 10
+        done
+
+        echo "Batch $job_id_number has finished. Submitting next batch."
+        date
+        {% endif %}
+
+        start=$((start + current_batch_reach_count))
+
+        if [[ "$current_batch_reach_count" -le 0 ]]; then
+            echo "Error: Batch reach count is 0. Terminating to prevent loop."
+            break
+        fi
+
+        sleep 1
+    done      
+done
+
+
+echo "Run $run has finished successfully."

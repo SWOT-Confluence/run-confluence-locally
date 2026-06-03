@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH --job-name={{ job_name }}
+#SBATCH --output={{ report_dir }}/{{ module_name }}.%j_%a.out
+#SBATCH --partition={{ hpc.partition }}
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --account={{ hpc.account }}
+#SBATCH --time={{ time_limit }}
+#SBATCH --mem={{ mem_limit }}
+
+{{ rendered_command }}

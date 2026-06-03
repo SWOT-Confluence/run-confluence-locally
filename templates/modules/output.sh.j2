@@ -1,0 +1,16 @@
+START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+
+singularity run \
+  --bind {{ mnt_dir }}/input:/mnt/data/input \
+  --bind {{ mnt_dir }}/flpe:/mnt/data/flpe \
+  --bind {{ mnt_dir }}/diagnostics:/mnt/data/diagnostics \
+  --bind {{ mnt_dir }}/moi:/mnt/data/moi \
+  --bind {{ mnt_dir }}/offline:/mnt/data/offline \
+  --bind {{ mnt_dir }}/validation:/mnt/data/validation \
+  --bind {{ mnt_dir }}/output:/mnt/data/output \
+  {{ sif_dir }}/output.simg \
+  -s local \
+  -j /app/metadata/metadata.json \
+  -m input prediagnostics momma metroman sic4dvar hivdi busboi consensus swot validation \
+  -v {{ exp.sword_version }} \
+  -i ${START_INDEX}

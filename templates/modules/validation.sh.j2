@@ -1,0 +1,14 @@
+START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
+
+singularity run \
+  --bind {{ mnt_dir }}/input:/mnt/data/input \
+  --bind {{ mnt_dir }}/svs:/mnt/data/svs \
+  --bind {{ mnt_dir }}/flpe:/mnt/data/flpe \
+  --bind {{ mnt_dir }}/moi:/mnt/data/moi \
+  --bind {{ mnt_dir }}/offline:/mnt/data/offline \
+  --bind {{ mnt_dir }}/validation:/mnt/data/output \
+  {{ sif_dir }}/validation.simg \
+  -r reaches.json \
+  -t unconstrained \
+  -i ${START_INDEX}-${END_INDEX}

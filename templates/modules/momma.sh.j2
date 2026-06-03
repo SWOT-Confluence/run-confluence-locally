@@ -1,0 +1,17 @@
+START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
+
+for (( idx=${START_INDEX}; idx<=${END_INDEX}; idx++ )); do
+  if [[ -n "$MAX_LIMIT" && "$idx" -ge "$MAX_LIMIT" ]]; then
+      break
+  fi
+  
+  singularity run \
+    --bind {{ mnt_dir }}/input:/mnt/data/input \
+    --bind {{ mnt_dir }}/flpe/momma:/mnt/data/output \
+    {{ sif_dir }}/momma.simg \
+    -r reaches.json \
+    -m {{ module.m_parameter}} \
+    {{ module.extra_args | default('') }} \
+    -i ${idx}
+done
