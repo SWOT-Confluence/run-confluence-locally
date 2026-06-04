@@ -5,14 +5,15 @@ for (( idx=${START_INDEX}; idx<=${END_INDEX}; idx++ )); do
   if [[ -n "$MAX_LIMIT" && "$idx" -ge "$MAX_LIMIT" ]]; then
       break
   fi
-  
-  singularity run \
+
+  apptainer run \
     --env AWS_BATCH_JOB_ID='foo' \
     --bind {{ mnt_dir }}/input:/mnt/data/input \
-    --bind {{ mnt_dir }}/flpe/metroman:/mnt/data/output \
-    {{ sif_dir }}/metroman.simg \
-    -r metrosets.json \
-    -s local \
+    --bind {{ mnt_dir }}/flpe:/mnt/data/flpe \
+    --bind {{ mnt_dir }}/moi:/mnt/data/output \
+    {{ sif_dir }}/moi.sif \
+    -j basin.json \
     -v \
+    -b {{ module.basin_type }} \
     -i ${idx}
 done

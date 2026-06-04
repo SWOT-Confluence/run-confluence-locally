@@ -1,0 +1,8 @@
+{% set expanded_flag = "-e" if module.expanded else "" %}
+
+apptainer run \
+    --bind {{ mnt_dir }}/input:/data \
+    {{ sif_dir }}/combine_data.sif \
+    {{ expanded_flag }} \
+    -d /data \
+    -s {sword_version}

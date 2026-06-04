@@ -6,10 +6,11 @@ for (( idx=${START_INDEX}; idx<=${END_INDEX}; idx++ )); do
       break
   fi
 
-  singularity run \
-    --bind {{ mnt_dir }}/input:/mnt/data/input \
-    --bind {{ mnt_dir }}/flpe/busboi:/mnt/data/output \
-    {{ sif_dir }}/busboi.simg \
-    --reachfile reaches.json \
-    -i ${idx}
+    apptainer run \
+        --bind {{ mnt_dir }}/input:/mnt/data/input \
+        --bind {{ mnt_dir }}/diagnostics/prediagnostics:/mnt/data/output \
+        {{ sif_dir }}/prediagnostics.sif \
+        -i ${idx} \
+        -r reaches.json \
+
 done

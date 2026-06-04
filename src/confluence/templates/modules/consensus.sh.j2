@@ -1,10 +1,10 @@
 START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
 
-singularity run \
+apptainer run \
   --bind {{ mnt_dir }}/input:/mnt/data/input \
   --bind {{ mnt_dir }}/flpe:/mnt/data/flpe \
-  {{ sif_dir }}/consensus.simg \
+  {{ sif_dir }}/consensus.sif \
   --mntdir /mnt/data \
   -r /mnt/data/input/reaches.json \
   -i ${START_INDEX}-${END_INDEX}

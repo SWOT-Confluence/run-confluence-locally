@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "run_confluence_locally"
+version = "1.0.0"
+description = "Runs Confluence software end to end on an HPC."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "jinja2==3.1.6",
+    "markupsafe==3.0.3",
+    "pyyaml==6.0.3",
+    "ruff==0.15.15"
+]
+
+[project.scripts]
+run-confluence = "confluence.run:cli"

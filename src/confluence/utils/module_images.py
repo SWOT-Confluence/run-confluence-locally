@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess as sp
 
 
+
 # Modules with repo names that differ from `regular` name.
 # Defaults to the `regular` name if not listed.
 REPO_NAME_MAP = {
@@ -33,10 +34,11 @@ def _validate_dir(dir: str | Path) -> Path:
 
 
 def clone_repos(
+    repo_names: list,
     github_name: str,
     repo_dir: str | Path,
-    repo_names: list,
-    branch: str | dict = "main",
+    branch_map: dict,
+    default_branch: str,
 ):
     """Clone repositories with specified branch.
  
@@ -51,7 +53,8 @@ def clone_repos(
     """
     repo_dir = _validate_dir(repo_dir)
     repo_dir.mkdir(parents=True, exist_ok=True)
-    for name, branch in repo_names.items():
+    for name in repo_names:
+        branch = branch_map.get(name, default_branch)
         path = repo_dir / name
         repo_name = REPO_NAME_MAP.get(name, name)
         
@@ -69,6 +72,7 @@ def clone_repos(
             print(f"[Remove] Deleting existing {name} to overwrite...")
             shutil.rmtree(path)
         print(f"[Clone] Cloning {name} from branch {branch_name}...")
+        
         sp.run(["git", "clone", "--branch", branch_name, url, name], cwd=repo_dir)
 
 
@@ -142,7 +146,7 @@ From: ghcr.io/swot-confluence/{sub_name}:{tag}
 
     return created
 
-def create_singularity_defs(mod: str, repo_dir: str | Path, tag: str = "latest") -> Path | None:
+def create_defs(mod: str, repo_dir: str | Path, tag: str = "latest") -> Path | None:
     """Generate Singularity.def from Dockerfile, copying ALL local script files
     into /app/ to override whatever the base GHCR image had.
 
@@ -270,13 +274,14 @@ def create_sifs(modules: list[str], sif_dir: str | Path, repo_dir: str | Path):
     repo_dir = _validate_dir(repo_dir)
 
     for mod in modules:
+        repo_name = REPO_NAME_MAP.get(mod, mod)
         if mod == "lakeflow":
             for sub_name in ("lakeflow_input", "lakeflow_deploy"):
                 sif_path = os.path.join(sif_dir, f'{sub_name}.sif')
                 def_file = f'Singularity_{sub_name}.def'
                 print(f'{sub_name}: Building...')
-                os.system(f'cd {repo_dir}/{mod} && apptainer build --force --ignore-fakeroot-command {sif_path} {def_file}')
+                os.system(f'cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} {def_file}')
         else:
             sif_path = os.path.join(sif_dir, f'{mod}.sif')
             print(f'{mod}: Building...')
-            os.system(f'cd {repo_dir}/{mod} && apptainer build --force --ignore-fakeroot-command {sif_path} Singularity.def')
+            os.system(f'cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} Singularity.def')

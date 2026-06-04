@@ -1,0 +1,21 @@
+START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
+
+{% set expanded_flag = "-e" if module.expanded else "" %}
+
+for (( idx=${START_INDEX}; idx<=${END_INDEX}; idx++ )); do
+  if [[ -n "$MAX_LIMIT" && "$idx" -ge "$MAX_LIMIT" ]]; then
+      break
+  fi
+
+  apptainer run \
+    --bind {{ mnt_dir }}/input:/mnt/data \
+    {{ sif_dir }}/input.sif \
+    -v {{ sword_version }} \
+    -r /mnt/data/expanded_reaches_of_interest.json \
+    -c {{ module.collection }} \
+    -t "{{ module.time_range }}" \
+    {{ expanded_flag }} \
+    -i ${idx} \
+    {{ skip_flag }}
+done

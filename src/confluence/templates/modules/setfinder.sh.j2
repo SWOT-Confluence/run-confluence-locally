@@ -1,11 +1,14 @@
 START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 
-singularity run \
+{% set expanded_flag = "-e" if module.expanded else "" %}
+
+apptainer run \
   --bind {{ mnt_dir }}/input:/data \
-  {{ sif_dir }}/setfinder.simg \
-  -c {{ files.continent }} \
+  {{ sif_dir }}/setfinder.sif \
+  -c continent.json \
   {{ module.extra_args | default('') }} \
-  -s {{ exp.sword_version }} \
+  {{ expanded_flag }} \
+  -s {{ sword_version }} \
   -o /data \
   -n /data \
   -a MetroMan HiVDI SIC NeoBAM \

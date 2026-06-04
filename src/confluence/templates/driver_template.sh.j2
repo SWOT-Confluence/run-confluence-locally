@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=confluence_{{ run_name }}
-#SBATCH --output={{ output_log_dir }}/{{ run_name }}_%j_%a.out
-#SBATCH --error={{ output_log_dir }}/{{ run_name }}_%j_%a.err
-#SBATCH --partition={{ partition }}
+#SBATCH --job-name=confluence_driver_{{ run_name }}
+#SBATCH --output={{ log_dir }}/{{ run_name }}_%j_%a.out
+#SBATCH --error={{ log_dir }}/{{ run_name }}_%j_%a.err
+#SBATCH --partition={{ hpc.partition }}
 #SBATCH --time=7-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=5G
-#SBATCH --account={{ account }}
+#SBATCH --account={{ hpc.account }}
 
 run='{{ run_name }}'
 echo "Run: $run"
@@ -16,18 +16,19 @@ echo "Run: $run"
 directory="{{ run_dir }}"
 
 # Parameters
-index_range={{ reach_chunks }}
-json_file="{{ json_file }}"
-expanded_json_file="{{ expanded_json_file }}"
-reach_json_file="{{ reach_json_file }}"
-basin_json_file="{{ basin_json_file }}"
-metroman_json_file="{{ metroman_json_file }}"
+index_range={{ hpc.reach_chunks }}
+json_file="{{ input_dir }}/reaches_of_interest.json"
+expanded_json_file="{{ input_dir }}/expanded_reaches_of_interest.json"
+reach_json_file="{{ input_dir }}/reaches.json"
+basin_json_file="{{ input_dir }}/basin.json"
+metroman_json_file="{{ input_dir }}/metrosets.json"
+
 default_jobs=$(jq length "$json_file")
 max_reaches={{ max_reaches | default(0) }}
 
 # Adjust to HPC requirements
-batch_size={{ batch_size }}
-concurrent_jobs={{ concurrent_jobs }}
+batch_size={{ hpc.batch_size }}
+concurrent_jobs={{ hpc.concurrent_jobs }}
 
 # Map specific script names to their job counts
 declare -A script_jobs=(
@@ -116,7 +117,7 @@ for slurm_script in "${scripts[@]}"; do
 
         job_id=$(sbatch --export=OFFSET=${start},INDEX_RANGE=${current_range},MAX_LIMIT=${num_jobs} \
                --array=0-${last_task_index}%${concurrent_jobs} \
-               "${directory}/${slurm_script}")
+               {{ sh_directory }}"/${slurm_script}")
         
         job_id_number=$(echo $job_id | awk '{print $4}')
 
@@ -140,7 +141,6 @@ for slurm_script in "${scripts[@]}"; do
 
         echo "Batch $job_id_number has finished. Submitting next batch."
         date
-        {% endif %}
 
         start=$((start + current_batch_reach_count))
 
