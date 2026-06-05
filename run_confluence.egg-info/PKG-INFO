@@ -1,3 +1,16 @@
+Metadata-Version: 2.4
+Name: run_confluence
+Version: 0.1.0
+Summary: Confluence pipeline runner
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: jinja2==3.1.6
+Requires-Dist: markupsafe==3.0.3
+Requires-Dist: pyyaml==6.0.3
+Requires-Dist: requests>=2.34.2
+Requires-Dist: ruff==0.15.15
+Requires-Dist: zenodo-get>=3.0.3
+
 # Install
 Create a python environment using uv OR conda:
 ## uv

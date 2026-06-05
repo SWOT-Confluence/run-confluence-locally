@@ -33,8 +33,8 @@ def create_slurm_scripts(cfg: dict):
         # Explicit template path resolution from cfg
         command_template = env.get_template(module_args["template"])
         rendered_command = command_template.render(
-            mnt_dir=cfg["mnt_dir"],
-            sif_dir=cfg["sif_dir"],
+            mnt_dir=cfg["dirs"]["mnt"],
+            sif_dir=cfg["dirs"]["sif"],
             sword_version=cfg["sword_version"],
             module=module_args,
             run=cfg["run_name"],
@@ -42,7 +42,7 @@ def create_slurm_scripts(cfg: dict):
 
         rendered_script = module_template.render(
             job_name=f"{module_name}_{cfg['run_name']}_cfl",
-            report_dir=cfg["report_dir"],
+            report_dir=cfg["dirs"]["report"],
             module_name=module_name,
             time_limit=time_limit,
             mem_limit=mem_limit,
@@ -50,7 +50,7 @@ def create_slurm_scripts(cfg: dict):
             rendered_command=rendered_command,
         )
 
-        script_path = cfg["sh_scripts_dir"] / f"{module_name}.sh"
+        script_path = cfg["dirs"]["sh_scripts"] / f"{module_name}.sh"
         with open(script_path, "w") as file:
             file.write(rendered_script)
         print(f"{module_name} script written.")
@@ -79,17 +79,17 @@ def create_slurm_driver(cfg: dict):
     rendered_script = template.render(
         run_name=cfg["run_name"],
         hpc=cfg["hpc"],
-        log_dir=cfg["log_dir"],
-        run_dir=cfg["run_dir"],
-        input_dir=cfg["mnt_dir"] / "input",
-        sh_directory=cfg["sh_scripts_dir"],
+        log_dir=cfg["dirs"]["log"],
+        run_dir=cfg["dirs"]["run"],
+        input_dir=cfg["dirs"]["mnt"] / "input",
+        sh_directory=cfg["dirs"]["sh_scripts"],
         scripts=scripts,
         script_jobs=script_jobs,
         max_reaches=cfg.get("max_reaches", 0),
     )
 
-    out_path = cfg["sh_scripts_dir"] / "slurm_driver.sh"
+    out_path = cfg["dirs"]["sh_scripts"] / "slurm_driver.sh"
     with open(out_path, "w") as f:
         f.write(rendered_script)
-        
+
     return out_path

@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "confluence-runner"
+name = "run_confluence"
 version = "0.1.0"
 description = "Confluence pipeline runner"
 readme = "README.md"
@@ -12,5 +12,7 @@ dependencies = [
     "jinja2==3.1.6",
     "markupsafe==3.0.3",
     "pyyaml==6.0.3",
-    "ruff==0.15.15"
+    "requests>=2.34.2",
+    "ruff==0.15.15",
+    "zenodo-get>=3.0.3",
 ]

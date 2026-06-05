@@ -3,20 +3,29 @@
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
 run_name: "end_to_end"
 
-empty_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4"
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
+
+# priors_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos" 
+priors_zenodo_doi: "10.5281/zenodo.20541765"
+
+# sword_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
+sword_zenodo_doi: "10.5281/zenodo.15299138"
+
+# svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/validation"
+svs_repo_filename: "SVS_v1_0_1.nc"
+
 
 default_github_username: "SWOT-Confluence"
 default_branch: "main" # Can also be per-module in `module_branches`
 default_image_release: 4.0.0
 
 # Good for testing but this is dangerous for experiments if you forget to change `root_dir` and or `run_name`.
-overwrite_run: True
+overwrite_run: False
 
-clone_repos: True
-rebuild_modules: True
+clone_repos: False
+build_modules: False
 
-# submit the slurm_driver.sh using `sbatch`
+# if true, submits the slurm_driver.sh using `sbatch`
 submit_driver: False
 
 ###
