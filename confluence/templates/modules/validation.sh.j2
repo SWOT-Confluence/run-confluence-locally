@@ -1,11 +1,11 @@
 START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
 
-for (( idx=${START_INDEX}; idx<=${END_INDEX}; idx++ )); do
-  if [[ -n "$MAX_LIMIT" && "$idx" -ge "$MAX_LIMIT" ]]; then
-      break
-  fi
+if [[ -n "$MAX_LIMIT" ]]; then
+    (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
+fi
 
+for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   apptainer run \
     --bind {{ mnt_dir }}/input:/mnt/data/input \
     --bind {{ mnt_dir }}/validation:/mnt/data/svs \

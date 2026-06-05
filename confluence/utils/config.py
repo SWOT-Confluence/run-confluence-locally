@@ -3,6 +3,7 @@ import json
 
 import yaml
 
+
 def from_file(file_path: Path | str) -> dict:
     """
     Load the config from a YAML or JSON file. Automatically detects file type by extension.
@@ -22,6 +23,7 @@ def from_file(file_path: Path | str) -> dict:
 
     cfg["cfg_path"] = file_path
     return cfg
+
 
 # def to_json(cfg: dict, path: str | Path):
 #     """Dump the config to a JSON file."""

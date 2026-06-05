@@ -1,36 +1,31 @@
-import os 
+import os
 import shutil
 import re
 from pathlib import Path
 import subprocess as sp
 
 
-
 # Modules with repo names that differ from `regular` name.
 # Defaults to the `regular` name if not listed.
 REPO_NAME_MAP = {
-    'offline': 'offline-discharge-data-product-creation',
-    'moi': 'MOI',
-    'validation': 'Validation',
-    'hivdi': 'h2ivdi',
-    'busboi': 'BUSBOI',
-    'lakeflow': 'LakeFlow_Confluence',
+    "offline": "offline-discharge-data-product-creation",
+    "moi": "MOI",
+    "validation": "Validation",
+    "hivdi": "h2ivdi",
+    "busboi": "BUSBOI",
+    "lakeflow": "LakeFlow_Confluence",
 }
 
-IMAGE_NAME_MAP = {
-    'hivdi': 'h2ivdi'
-}
+IMAGE_NAME_MAP = {"hivdi": "h2ivdi"}
+
 
 def _validate_dir(dir: str | Path) -> Path:
     """Coerce str -> Path and validate type. Use at every entry point."""
     if isinstance(dir, str):
         dir = Path(dir)
     elif not isinstance(dir, Path):
-        raise TypeError(
-            f"Argument must be a Path or str. Got {type(dir)}."
-        )
+        raise TypeError(f"Argument must be a Path or str. Got {type(dir)}.")
     return dir
-
 
 
 def clone_repos(
@@ -41,7 +36,7 @@ def clone_repos(
     default_branch: str,
 ):
     """Clone repositories with specified branch.
- 
+
     Parameters
     ----------
     github_name : str
@@ -57,24 +52,23 @@ def clone_repos(
         branch = branch_map.get(name, default_branch)
         path = repo_dir / name
         repo_name = REPO_NAME_MAP.get(name, name)
-        
+
         # NEW: handle 'org:branch' syntax for forks
-        if ':' in branch:
-            custom_org, actual_branch = branch.split(':', 1)
+        if ":" in branch:
+            custom_org, actual_branch = branch.split(":", 1)
             url = f"https://github.com/{custom_org}/{repo_name}.git"
             branch_name = actual_branch
         else:
             url = f"https://github.com/{github_name}/{repo_name}.git"
             branch_name = branch
-        
+
         # rest of function unchanged
         if path.exists():
             print(f"[Remove] Deleting existing {name} to overwrite...")
             shutil.rmtree(path)
         print(f"[Clone] Cloning {name} from branch {branch_name}...")
-        
-        sp.run(["git", "clone", "--branch", branch_name, url, name], cwd=repo_dir)
 
+        sp.run(["git", "clone", "--branch", branch_name, url, name], cwd=repo_dir)
 
 
 def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
@@ -100,14 +94,44 @@ def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
                 if matches:
                     entrypoint = " ".join(matches)
 
-        override_extensions = {".py", ".sh", ".bash", ".r", ".R",
-                               ".pl", ".json", ".yaml", ".yml", ".cfg", ".toml", ".ini"}
-        skip_dirs = {".git", "__pycache__", ".github", ".eggs",
-                     "env", "venv", ".mypy_cache", ".pytest_cache"}
-        skip_files = {"Dockerfile", "Dockerfile_input", "Dockerfile_deploy",
-                      "Singularity.def", "requirements.txt",
-                      ".gitignore", ".dockerignore", "setup.py", "setup.cfg",
-                      "pyproject.toml", "LICENSE", "README.md"}
+        override_extensions = {
+            ".py",
+            ".sh",
+            ".bash",
+            ".r",
+            ".R",
+            ".pl",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".cfg",
+            ".toml",
+            ".ini",
+        }
+        skip_dirs = {
+            ".git",
+            "__pycache__",
+            ".github",
+            ".eggs",
+            "env",
+            "venv",
+            ".mypy_cache",
+            ".pytest_cache",
+        }
+        skip_files = {
+            "Dockerfile",
+            "Dockerfile_input",
+            "Dockerfile_deploy",
+            "Singularity.def",
+            "requirements.txt",
+            ".gitignore",
+            ".dockerignore",
+            "setup.py",
+            "setup.cfg",
+            "pyproject.toml",
+            "LICENSE",
+            "README.md",
+        }
 
         override_files = []
         for root, dirs, files in os.walk(mod_dir):
@@ -141,10 +165,13 @@ From: ghcr.io/swot-confluence/{sub_name}:{tag}
 
         def_path = mod_dir / f"Singularity_{sub_name}.def"
         def_path.write_text(def_content)
-        print(f"{sub_name}: Singularity.def created ({len(override_files)} local files)")
+        print(
+            f"{sub_name}: Singularity.def created ({len(override_files)} local files)"
+        )
         created.append(def_path)
 
     return created
+
 
 def create_defs(mod: str, repo_dir: str | Path, tag: str = "latest") -> Path | None:
     """Generate Singularity.def from Dockerfile, copying ALL local script files
@@ -159,7 +186,7 @@ def create_defs(mod: str, repo_dir: str | Path, tag: str = "latest") -> Path | N
     """
     repo_dir = _validate_dir(repo_dir)
     mod_dir = repo_dir / mod
-    
+
     image_name = IMAGE_NAME_MAP.get(mod, mod)
 
     # Special handling: lakeflow has two Dockerfiles → two SIFs
@@ -185,17 +212,40 @@ def create_defs(mod: str, repo_dir: str | Path, tag: str = "latest") -> Path | N
 
     # Discover ALL local script files to override
     override_extensions = {
-        ".py", ".sh", ".bash", ".r", ".R",
-        ".pl", ".json", ".yaml", ".yml", ".cfg", ".toml", ".ini",
+        ".py",
+        ".sh",
+        ".bash",
+        ".r",
+        ".R",
+        ".pl",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".cfg",
+        ".toml",
+        ".ini",
     }
     skip_dirs = {
-        ".git", "__pycache__", ".github", ".eggs",
-        "env", "venv", ".mypy_cache", ".pytest_cache",
+        ".git",
+        "__pycache__",
+        ".github",
+        ".eggs",
+        "env",
+        "venv",
+        ".mypy_cache",
+        ".pytest_cache",
     }
     skip_files = {
-        "Dockerfile", "Singularity.def", "requirements.txt",
-        ".gitignore", ".dockerignore", "setup.py", "setup.cfg",
-        "pyproject.toml", "LICENSE", "README.md",
+        "Dockerfile",
+        "Singularity.def",
+        "requirements.txt",
+        ".gitignore",
+        ".dockerignore",
+        "setup.py",
+        "setup.cfg",
+        "pyproject.toml",
+        "LICENSE",
+        "README.md",
     }
 
     override_files = []
@@ -235,7 +285,9 @@ From: ghcr.io/swot-confluence/{image_name}:{tag}
             def_content += f"    {rel_path} /app/{rel_path}\n"
 
     def_content += "\n%post\n"
-    def_content += f'    echo "=== {mod}: {len(override_files)} local files overridden ==="\n'
+    def_content += (
+        f'    echo "=== {mod}: {len(override_files)} local files overridden ==="\n'
+    )
 
     # Reinstall requirements.txt to catch any missing packages in the base image.
     # Critical for MOI which has had recurring missing-package issues. For modules
@@ -277,11 +329,15 @@ def create_sifs(modules: list[str], sif_dir: str | Path, repo_dir: str | Path):
         repo_name = REPO_NAME_MAP.get(mod, mod)
         if mod == "lakeflow":
             for sub_name in ("lakeflow_input", "lakeflow_deploy"):
-                sif_path = os.path.join(sif_dir, f'{sub_name}.sif')
-                def_file = f'Singularity_{sub_name}.def'
-                print(f'{sub_name}: Building...')
-                os.system(f'cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} {def_file}')
+                sif_path = os.path.join(sif_dir, f"{sub_name}.sif")
+                def_file = f"Singularity_{sub_name}.def"
+                print(f"{sub_name}: Building...")
+                os.system(
+                    f"cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} {def_file}"
+                )
         else:
-            sif_path = os.path.join(sif_dir, f'{mod}.sif')
-            print(f'{mod}: Building...')
-            os.system(f'cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} Singularity.def')
+            sif_path = os.path.join(sif_dir, f"{mod}.sif")
+            print(f"{mod}: Building...")
+            os.system(
+                f"cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} Singularity.def"
+            )

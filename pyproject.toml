@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "run_confluence_locally"
-version = "1.0.0"
-description = "Runs Confluence software end to end on an HPC."
+name = "confluence-runner"
+version = "0.1.0"
+description = "Confluence pipeline runner"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,6 +14,3 @@ dependencies = [
     "pyyaml==6.0.3",
     "ruff==0.15.15"
 ]
-
-[project.scripts]
-run-confluence = "confluence.run:cli"

@@ -1,57 +1,60 @@
+
+# The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
+run_name: "end_to_end"
+
 empty_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4"
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
-run_name: "end_to_end"
-github_username: "SWOT-Confluence"
+default_github_username: "SWOT-Confluence"
 default_branch: "main" # Can also be per-module in `module_branches`
-image_release_tag: 4.0.0
+default_image_release: 4.0.0
 
 # Good for testing but this is dangerous for experiments if you forget to change `root_dir` and or `run_name`.
-overwrite_run: False
-clone_repos: False
-rebuild_modules: False
+overwrite_run: True
+
+clone_repos: True
+rebuild_modules: True
+
+# submit the slurm_driver.sh using `sbatch`
+submit_driver: False
+
+###
+# TODO: verbose flag. Currently an avalanche of output makes it hard to spot errors/warnings. 
+# verbose: False
+###
 
 # This limits the number of jobs that the slurm driver will create for the per-reach jobs
-max_reaches: 10
+# max_reaches: 10
 
 modules_to_run:
-  # - "expanded_setfinder"
-  # - "expanded_combine_data"
-  # - "input"
-  # - "non_expanded_setfinder"
-  # - "non_expanded_combine_data"
-  # - "prediagnostics"
+  - "expanded_setfinder"
+  - "expanded_combine_data"
+  - "input"
+  - "non_expanded_setfinder"
+  - "non_expanded_combine_data"
+  - "prediagnostics"
   # # - "priors"
   - "metroman"
   - "metroman_consolidation"
-  - "unconstrained_momma"
-  - "busboi"
-  - "hivdi"
-  - "sic4dvar"
-  - "consensus"
+  # - "unconstrained_momma"
+  # - "busboi"
+  # - "hivdi"
+  # - "sic4dvar"
+  # - "consensus"
   # # # - "moi"
   - "validation"
   - "output"
 
+
+###
+# TODO: allow pulling/building a subset of modules. E.g., 
 # images_to_build:
-#   - "setfinder"
-#   - "combine_data"
-#   - "input"
-#   - "prediagnostics"
-#   - "priors"
-#   - "metroman"
-#   - "metroman_consolidation"
-#   - "momma"
-  # - "busboi"
-#   - "hivdi"
-#   - "sad"
-#   - "sic4dvar"
 #   - "consensus"
-#   - "moi"
-#   - "offline"
 #   - "validation"
 #   - "output"
+
+###
 
 
 ### 
@@ -67,7 +70,6 @@ modules_to_run:
 #   combine_data: "tedlanghorst:dev"
 #   # etc... 
 ####
-
 module_branches:
   busboi: "BUSBOI_main"
 

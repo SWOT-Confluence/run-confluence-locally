@@ -1,6 +1,10 @@
 START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
 
+if [[ -n "$MAX_LIMIT" ]]; then
+    (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
+fi
+
 apptainer run \
   --bind {{ mnt_dir }}/input:/mnt/data/input \
   --bind {{ mnt_dir }}/flpe:/mnt/data/flpe \
