@@ -5,7 +5,7 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
-{% set expanded_flag = "-e" if module.expanded else "" %}
+{% set skip_flag = "-k" if module.continue_downloads else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   apptainer run \
@@ -15,7 +15,6 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     -r /mnt/data/expanded_reaches_of_interest.json \
     -c {{ module.collection }} \
     -t "{{ module.time_range }}" \
-    {{ expanded_flag }} \
     -i ${idx} \
     {{ skip_flag }}
 done

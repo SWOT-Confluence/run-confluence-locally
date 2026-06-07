@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 confluence/__init__.py
 confluence/utils/__init__.py
+confluence/utils/config.py
 confluence/utils/dir_structure.py
 confluence/utils/module_images.py
 confluence/utils/scripts.py

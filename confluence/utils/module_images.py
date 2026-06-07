@@ -31,9 +31,10 @@ def _validate_dir(dir: str | Path) -> Path:
 def clone_repos(
     repo_names: list,
     github_name: str,
-    repo_dir: str | Path,
-    branch_map: dict,
     default_branch: str,
+    branch_map: dict,
+    repo_dir: str | Path,
+    
 ):
     """Clone repositories with specified branch.
 

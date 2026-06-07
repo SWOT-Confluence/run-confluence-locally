@@ -6,7 +6,7 @@ apptainer run \
   --bind {{ mnt_dir }}/input:/data \
   {{ sif_dir }}/setfinder.sif \
   -c continent.json \
-  {{ module.extra_args | default('') }} \
+  {{ module.reach_file | default('') }} \
   {{ expanded_flag }} \
   -s {{ sword_version }} \
   -o /data \

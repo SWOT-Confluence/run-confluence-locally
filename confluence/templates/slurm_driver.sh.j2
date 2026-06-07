@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=confluence_driver_{{ run_name }}
-#SBATCH --output={{ log_dir }}/{{ run_name }}_%j_%a.out
-#SBATCH --error={{ log_dir }}/{{ run_name }}_%j_%a.err
+#SBATCH --output={{ dirs['log'] }}/{{ run_name }}_%j_%a.out
+#SBATCH --error={{ dirs['log'] }}/{{ run_name }}_%j_%a.err
 #SBATCH --partition={{ hpc.partition }}
-#SBATCH --time=7-00:00:00
+#SBATCH --time={{ hpc.time }}
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
@@ -13,15 +13,15 @@
 run='{{ run_name }}'
 echo "Run: $run"
 
-directory="{{ run_dir }}"
+directory="{{ dirs['run'] }}"
 
 # Parameters
 index_range={{ hpc.reach_chunks }}
-json_file="{{ input_dir }}/reaches_of_interest.json"
-expanded_json_file="{{ input_dir }}/expanded_reaches_of_interest.json"
-reach_json_file="{{ input_dir }}/reaches.json"
-basin_json_file="{{ input_dir }}/basin.json"
-metroman_json_file="{{ input_dir }}/metrosets.json"
+json_file="{{ dirs["mnt"] / "input" }}/reaches_of_interest.json"
+expanded_json_file="{{ dirs["mnt"] / "input" }}/expanded_reaches_of_interest.json"
+reach_json_file="{{ dirs["mnt"] / "input" }}/reaches.json"
+basin_json_file="{{ dirs["mnt"] / "input" }}/basin.json"
+metroman_json_file="{{ dirs["mnt"] / "input" }}/metrosets.json"
 
 default_jobs=$(jq length "$json_file")
 max_reaches={{ max_reaches | default(0) }}
@@ -117,7 +117,7 @@ for slurm_script in "${scripts[@]}"; do
 
         job_id=$(sbatch --export=OFFSET=${start},INDEX_RANGE=${current_range},MAX_LIMIT=${num_jobs} \
                --array=0-${last_task_index}%${concurrent_jobs} \
-               {{ sh_directory }}"/${slurm_script}")
+               {{ dirs["sh_scripts"] }}"/${slurm_script}")
         
         job_id_number=$(echo $job_id | awk '{print $4}')
 

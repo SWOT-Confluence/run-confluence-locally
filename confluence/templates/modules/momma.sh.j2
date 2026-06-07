@@ -5,6 +5,8 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
+{% set constrained_flag = "-c" if module.constrained else "" %}
+
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   apptainer run \
     --bind {{ mnt_dir }}/input:/mnt/data/input \
@@ -12,6 +14,6 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ sif_dir }}/momma.sif \
     -r reaches.json \
     -m {{ module.m_parameter}} \
-    {% if module.constrained %}-c \{% endif %}
+    {{ constrained_flag }} \
     -i ${idx}
 done
