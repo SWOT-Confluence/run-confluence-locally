@@ -80,7 +80,7 @@ def setup_modules(cfg: dict):
     for module in stripped_modules:
         create_defs(module, cfg.dirs["modules"], cfg.default_image_release_tag)
 
-    create_sifs(stripped_modules, cfg.dirs["sif"], cfg.dirs["modules"])
+    create_sifs(stripped_modules, cfg.build_command, cfg.dirs["sif"], cfg.dirs["modules"])
 
 
 def main(config_path):

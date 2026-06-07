@@ -8,8 +8,8 @@ fi
 {% set skip_flag = "-k" if module.continue_downloads else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  apptainer run \
-    --bind {{ mnt_dir }}/input:/mnt/data \
+  {{ container_commands.run }} run \
+    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data \
     {{ sif_dir }}/input.sif \
     -v {{ sword_version }} \
     -r /mnt/data/expanded_reaches_of_interest.json \

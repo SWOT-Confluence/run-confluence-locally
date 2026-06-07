@@ -19,6 +19,17 @@ HARDCODED_JOBS = {
     "output": "6",
 }
 
+def _get_platform_dict(platform: str):
+    match platform:
+        case "apptainer": 
+            bind_cmd = "--bind"
+        case "docker":
+            bind_cmd = "-v"
+        case _: 
+            raise ValueError(f"{platform = } has not been implemented.")
+    return {'run': platform, 'bind': bind_cmd}
+
+
 
 def create_slurm_scripts(cfg: Config):
     env = Environment(loader=PackageLoader("confluence", "templates"), trim_blocks=True)
@@ -26,12 +37,15 @@ def create_slurm_scripts(cfg: Config):
     # SBATCH header commands
     module_template_file = env.get_template("sbatch.sh.j2")
 
+    platform_dict = _get_platform_dict(cfg.container_platform)
+
     for module_name in cfg.modules_to_run:
         template_args = cfg.module_templates[module_name]
 
         # Module specific command
         command_template = env.get_template(template_args.j2_file)
         rendered_command = command_template.render(
+            container_commands=platform_dict,
             mnt_dir=cfg.dirs["mnt"],
             sif_dir=cfg.dirs["sif"],
             sword_version=cfg.sword_version,

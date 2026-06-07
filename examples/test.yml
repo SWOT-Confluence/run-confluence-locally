@@ -22,9 +22,11 @@ default_repository_branch: "main" # Can also be per-module in `module_branches`
 default_image_release_tag: 4.0.0
 
 # Good for testing but this is dangerous for experiments if you forget to change `root_dir` and or `run_name`.
-overwrite_run: True
-clone_repos: True
+overwrite_run: False
+clone_repos: False
 build_modules: True
+
+container_platform: "apptainer"
 
 # if true, submits the slurm_driver.sh using `sbatch`
 submit_driver: False

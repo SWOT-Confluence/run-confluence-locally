@@ -8,9 +8,9 @@ fi
 {% set constrained_flag = "-c" if module.constrained else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  apptainer run \
-    --bind {{ mnt_dir }}/input:/mnt/data/input \
-    --bind {{ mnt_dir }}/flpe/momma:/mnt/data/output \
+  {{ container_commands.run }} run \
+    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_commands.bind }} {{ mnt_dir }}/flpe/momma:/mnt/data/output \
     {{ sif_dir }}/momma.sif \
     -r reaches.json \
     -m {{ module.m_parameter}} \

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import yaml
 from pydantic import (
@@ -80,7 +80,9 @@ class Config(BaseModel):
     max_reaches: int = Field(0, gte=0)
     overwrite_run: bool
     clone_repos: bool
+
     build_modules: bool
+    container_platform: Literal["apptainer"] # TODO implement docker
     submit_driver: bool
 
     modules_to_run: list[str]
@@ -103,7 +105,7 @@ class Config(BaseModel):
         ]
 
         for attr_group in exclusive_groups:
-            values = [getattr(a) is not None for a in attr_group]
+            values = [getattr(self, a) is not None for a in attr_group]
             if sum(values)>1:
                 raise ValidationError(f"Only specify one of {attr_group} as have conflicting sources for the data.")
             if sum(values)==0:

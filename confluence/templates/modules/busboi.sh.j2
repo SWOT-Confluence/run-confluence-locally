@@ -6,9 +6,9 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  apptainer run \
-    --bind {{ mnt_dir }}/input:/mnt/data/input \
-    --bind {{ mnt_dir }}/flpe/busboi:/mnt/data/output \
+  {{ container_commands.run }} run \
+    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_commands.bind }} {{ mnt_dir }}/flpe/busboi:/mnt/data/output \
     {{ sif_dir }}/busboi.sif \
     --reachfile reaches.json \
     -i ${idx}

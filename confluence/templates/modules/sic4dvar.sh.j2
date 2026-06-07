@@ -6,10 +6,10 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  apptainer run \
-    --bind {{ mnt_dir }}/input:/mnt/data/input \
-    --bind {{ mnt_dir }}/flpe/sic4dvar:/mnt/data/output \
-    --bind {{ mnt_dir }}/logs:/mnt/data/logs \
+  {{ container_commands.run }} run \
+    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_commands.bind }} {{ mnt_dir }}/flpe/sic4dvar:/mnt/data/output \
+    {{ container_commands.bind }} {{ mnt_dir }}/logs:/mnt/data/logs \
     {{ sif_dir }}/sic4dvar.sif \
     -r reaches.json \
     --index ${idx}

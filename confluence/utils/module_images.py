@@ -321,24 +321,36 @@ From: ghcr.io/swot-confluence/{image_name}:{tag}
     return def_path
 
 
+def _build(container_platform: str, repo_path: str, sif_path: str, def_file: str):
+    match container_platform:
+        case 'singularity':
+            cmd_str = f"cd {repo_path} && singularity build --force --ignore-fakeroot-command {sif_path} {def_file}"
+        # TODO - implement docker building here
+        case _: 
+            raise ValueError(f"{container_platform = } has not been implemented.")
+    sp.run(cmd_str)
+
 # Build SIFs (special-case lakeflow's two sub-images)
-def create_sifs(modules: list[str], sif_dir: str | Path, repo_dir: str | Path):
+def create_sifs(modules: list[str], container_platform: str, sif_dir: str | Path, repo_dir: str | Path):
     sif_dir = _validate_dir(sif_dir)
     repo_dir = _validate_dir(repo_dir)
 
     for mod in modules:
+        print(f"{mod}: Building...")
+        
         repo_name = REPO_NAME_MAP.get(mod, mod)
         if mod == "lakeflow":
             for sub_name in ("lakeflow_input", "lakeflow_deploy"):
-                sif_path = os.path.join(sif_dir, f"{sub_name}.sif")
+                sif_path = sif_dir / f"{sub_name}.sif"
                 def_file = f"Singularity_{sub_name}.def"
-                print(f"{sub_name}: Building...")
-                os.system(
-                    f"cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} {def_file}"
-                )
+                _build(container_platform, repo_dir, sif_path, def_file)
+
         else:
             sif_path = os.path.join(sif_dir, f"{mod}.sif")
-            print(f"{mod}: Building...")
+            
             os.system(
-                f"cd {repo_dir}/{repo_name.lower()} && apptainer build --force --ignore-fakeroot-command {sif_path} Singularity.def"
+                f"cd {repo_dir}/{repo_name.lower()} && {container_platform} build --force --ignore-fakeroot-command {sif_path} Singularity.def"
             )
+
+
+

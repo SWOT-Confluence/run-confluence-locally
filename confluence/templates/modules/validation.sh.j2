@@ -6,13 +6,13 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  apptainer run \
-    --bind {{ mnt_dir }}/input:/mnt/data/input \
-    --bind {{ mnt_dir }}/validation:/mnt/data/svs \
-    --bind {{ mnt_dir }}/flpe:/mnt/data/flpe \
-    --bind {{ mnt_dir }}/moi:/mnt/data/moi \
-    --bind {{ mnt_dir }}/offline:/mnt/data/offline \
-    --bind {{ mnt_dir }}/validation:/mnt/data/output \
+  {{ container_commands.run }} run \
+    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_commands.bind }} {{ mnt_dir }}/validation:/mnt/data/svs \
+    {{ container_commands.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
+    {{ container_commands.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
+    {{ container_commands.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
+    {{ container_commands.bind }} {{ mnt_dir }}/validation:/mnt/data/output \
     {{ sif_dir }}/validation.sif \
     -r reaches.json \
     -t unconstrained \

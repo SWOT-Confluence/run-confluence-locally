@@ -1,8 +1,8 @@
 START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 
-apptainer run \
+{{ container_commands.run }} run \
   --env AWS_BATCH_JOB_ID='foo' \
-  --bind {{ mnt_dir }}/input:/mnt/data/input \
-  --bind {{ mnt_dir }}/flpe/metroman:/mnt/data/flpe \
+  {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+  {{ container_commands.bind }} {{ mnt_dir }}/flpe/metroman:/mnt/data/flpe \
   {{ sif_dir }}/metroman_consolidation.sif \
   -i ${START_INDEX}

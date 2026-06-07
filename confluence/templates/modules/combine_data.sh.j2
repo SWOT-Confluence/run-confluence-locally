@@ -1,7 +1,7 @@
 {% set expanded_flag = "-e" if module.expanded else "" %}
 
-apptainer run \
-    --bind {{ mnt_dir }}/input:/data \
+{{ container_commands.run }} run \
+    {{ container_commands.bind }} {{ mnt_dir }}/input:/data \
     {{ sif_dir }}/combine_data.sif \
     {{ expanded_flag }} \
     -d /data \
