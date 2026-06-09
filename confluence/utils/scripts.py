@@ -19,16 +19,16 @@ HARDCODED_JOBS = {
     "output": "6",
 }
 
+
 def _get_platform_dict(platform: str):
     match platform:
-        case "apptainer": 
+        case "apptainer":
             bind_cmd = "--bind"
         case "docker":
             bind_cmd = "-v"
-        case _: 
+        case _:
             raise ValueError(f"{platform = } has not been implemented.")
-    return {'run': platform, 'bind': bind_cmd}
-
+    return {"run": platform, "bind": bind_cmd}
 
 
 def create_slurm_scripts(cfg: Config):
@@ -54,7 +54,7 @@ def create_slurm_scripts(cfg: Config):
         )
 
         rendered_script = module_template_file.render(
-            job_name=f"{module_name}_{cfg.run_name}_cfg",
+            job_name=f"{module_name}_{cfg.run_name}_cfl",
             report_dir=cfg.dirs["report"],
             module_name=module_name,
             time_limit=template_args.time,

@@ -1,15 +1,11 @@
 Metadata-Version: 2.4
-Name: run_confluence
+Name: confluence
 Version: 0.1.0
 Summary: Confluence pipeline runner
 Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: jinja2==3.1.6
 Requires-Dist: markupsafe==3.0.3
-Requires-Dist: netcdf4>=1.7.4
-Requires-Dist: numpy>=2.4.6
-Requires-Dist: pandas>=3.0.3
-Requires-Dist: pydantic>=2.13.4
 Requires-Dist: pyyaml==6.0.3
 Requires-Dist: requests>=2.34.2
 Requires-Dist: ruff==0.15.15
@@ -23,15 +19,15 @@ uv sync
 ```
 ## conda
 ```bash
-conda create -n confluence-env python=3.11 pip -c conda-forge -y
+conda env create -f environment.yml
 conda activate confluence-env
-pip install -e .
 ```
 
 # Run
 1. Modify the configuration .yml file 
 1. ``` python run.py <path/to/config_file.yml>```
 1. If you have config'd `submit_driver: True` the slurm driver script will automatically be submitted to sbatch. Otherwise, the driver script path will be printed for you to take a look. To run it, call ```sbatch <path/to/driver_script.sh>```
+
 
 
 ##### Choose reaches to process

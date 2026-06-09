@@ -3,6 +3,7 @@ import shutil
 import re
 from pathlib import Path
 import subprocess as sp
+from concurrent.futures import ThreadPoolExecutor
 
 
 # Modules with repo names that differ from `regular` name.
@@ -34,7 +35,6 @@ def clone_repos(
     default_branch: str,
     branch_map: dict,
     repo_dir: str | Path,
-    
 ):
     """Clone repositories with specified branch.
 
@@ -321,36 +321,44 @@ From: ghcr.io/swot-confluence/{image_name}:{tag}
     return def_path
 
 
-def _build(container_platform: str, repo_path: str, sif_path: str, def_file: str):
+def _build(container_platform: str, module_dir: Path, sif_path: str, def_name: str):
     match container_platform:
-        case 'singularity':
-            cmd_str = f"cd {repo_path} && singularity build --force --ignore-fakeroot-command {sif_path} {def_file}"
+        case "apptainer":
+            cmd = [
+                "apptainer",
+                "build",
+                "--force",
+                "--ignore-fakeroot-command",
+                str(sif_path),
+                def_name,
+            ]
         # TODO - implement docker building here
-        case _: 
+        case _:
             raise ValueError(f"{container_platform = } has not been implemented.")
-    sp.run(cmd_str)
+    sp.run(cmd, cwd=str(module_dir), check=True)
+
 
 # Build SIFs (special-case lakeflow's two sub-images)
-def create_sifs(modules: list[str], container_platform: str, sif_dir: str | Path, repo_dir: str | Path):
+def create_sifs(
+    modules: list[str],
+    container_platform: str,
+    sif_dir: str | Path,
+    repo_dir: str | Path,
+):
     sif_dir = _validate_dir(sif_dir)
     repo_dir = _validate_dir(repo_dir)
 
     for mod in modules:
+        mod_dir = repo_dir/'mod'
         print(f"{mod}: Building...")
-        
-        repo_name = REPO_NAME_MAP.get(mod, mod)
+
         if mod == "lakeflow":
             for sub_name in ("lakeflow_input", "lakeflow_deploy"):
                 sif_path = sif_dir / f"{sub_name}.sif"
                 def_file = f"Singularity_{sub_name}.def"
-                _build(container_platform, repo_dir, sif_path, def_file)
+                _build(container_platform, mod_dir , sif_path, def_file)
 
         else:
-            sif_path = os.path.join(sif_dir, f"{mod}.sif")
-            
-            os.system(
-                f"cd {repo_dir}/{repo_name.lower()} && {container_platform} build --force --ignore-fakeroot-command {sif_path} Singularity.def"
-            )
-
-
-
+            sif_path = sif_dir / f"{mod}.sif"
+            def_file = "Singularity.def"
+            _build(container_platform, mod_dir, sif_path, def_file)

@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+confluence/__init__.py
+confluence.egg-info/PKG-INFO
+confluence.egg-info/SOURCES.txt
+confluence.egg-info/dependency_links.txt
+confluence.egg-info/requires.txt
+confluence.egg-info/top_level.txt
+confluence/utils/__init__.py
+confluence/utils/dir_structure.py
+confluence/utils/module_images.py
+confluence/utils/scripts.py

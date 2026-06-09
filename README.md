@@ -6,8 +6,9 @@ uv sync
 ```
 ## conda
 ```bash
-conda env create -f environment.yml
+conda create -n confluence-env python=3.11 pip -c conda-forge -y
 conda activate confluence-env
+pip install -e .
 ```
 
 # Run
@@ -16,44 +17,8 @@ conda activate confluence-env
 1. If you have config'd `submit_driver: True` the slurm driver script will automatically be submitted to sbatch. Otherwise, the driver script path will be printed for you to take a look. To run it, call ```sbatch <path/to/driver_script.sh>```
 
 
-
-
-### Confluence Folder Structure
-Here is an example of the initial folder structure
-
-confluence_<run_name>  
-├── log
-├── modules
-├── report 
-├── sh_scripts
-├── sif  
-└── <run_name>_mnt
-  ├── diagnostics  
-  ├── flpe  
-  │ ├── busboi  
-  │ ├── hivdi  
-  │ ├── metroman  
-  │ │   └── sets  
-  │ ├── momma  
-  │ ├── sad  
-  │ ├── consensus 
-  │ └── sic4dvar  
-  ├── input  
-    ├── sos
-    ├── sword
-    ├── swot
-    └── reaches_of_interest.json  
-  ├── logs  
-  ├── moi  
-  ├── offline  
-  ├── output  
-  ├── validation 
-  └── mnt_dirs.sh   
-
 ##### Choose reaches to process
   6. Edit xxx_mnt/input/reaches_of_interest.json to be a list of reaches you want to process. Leave it as it is to target the devset. 
-      NOTE: ***HIGHLY SUGGESTED FOR FIRST RUN*** Priors takes a long time, if you do not need to build it, replace with the latest .nc priors files (one per continent) in /xxx_mnt/input/sos/priors/
-
 
 ### Results and Reminders
 1. Modules MUST be run in serial and are dependent on each other (algorithm modules can be run in any order within the larger sequence)

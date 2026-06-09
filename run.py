@@ -1,8 +1,5 @@
 import argparse
 import subprocess as sp
-from pathlib import Path
-
-import yaml
 
 from confluence.utils.config import Config
 from confluence.utils.dir_structure import setup_dirs
@@ -53,7 +50,7 @@ def setup_modules(cfg: dict):
             cfg.default_github_username,
             cfg.default_repository_branch,
             cfg.module_branches,
-            cfg.dirs["run"] / "modules",    
+            cfg.dirs["run"] / "modules",
         )
     else:
         print("Using existing module files.")
@@ -80,7 +77,9 @@ def setup_modules(cfg: dict):
     for module in stripped_modules:
         create_defs(module, cfg.dirs["modules"], cfg.default_image_release_tag)
 
-    create_sifs(stripped_modules, cfg.build_command, cfg.dirs["sif"], cfg.dirs["modules"])
+    create_sifs(
+        stripped_modules, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"]
+    )
 
 
 def main(config_path):
@@ -91,7 +90,7 @@ def main(config_path):
     driver_path = create_slurm_driver(cfg)
 
     if cfg.submit_driver:
-        sp.run(f"sbatch {driver_path}")
+        sp.run(["sbatch", driver_path])
     else:
         print(f"slurm driver written to {driver_path}")
 

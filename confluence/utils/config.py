@@ -8,7 +8,7 @@ from pydantic import (
     Field,
     field_validator,
     model_validator,
-    ValidationError
+    ValidationError,
 )
 from pydantic.types import DirectoryPath, FilePath
 
@@ -62,7 +62,7 @@ class Config(BaseModel):
     root_dir: Path
     run_name: str
     roi_file: FilePath  # must exist
-    sword_version: str
+    sword_version: Literal["16", "17"]
 
     priors_copy_dir: DirectoryPath = None
     priors_zenodo_doi: str = None
@@ -82,7 +82,7 @@ class Config(BaseModel):
     clone_repos: bool
 
     build_modules: bool
-    container_platform: Literal["apptainer"] # TODO implement docker
+    container_platform: Literal["apptainer"]  # TODO implement docker
     submit_driver: bool
 
     modules_to_run: list[str]
@@ -99,20 +99,24 @@ class Config(BaseModel):
     @model_validator(mode="after")
     def validate_copy_xor_download(self):
         exclusive_groups = [
-            ('priors_copy_dir', 'priors_zenodo_doi'),
-            ('sword_copy_dir', 'sword_zenodo_doi'),
-            ('svs_copy_dir', 'svs_repo_filename')
+            ("priors_copy_dir", "priors_zenodo_doi"),
+            ("sword_copy_dir", "sword_zenodo_doi"),
+            ("svs_copy_dir", "svs_repo_filename"),
         ]
 
         for attr_group in exclusive_groups:
             values = [getattr(self, a) is not None for a in attr_group]
-            if sum(values)>1:
-                raise ValidationError(f"Only specify one of {attr_group} as have conflicting sources for the data.")
-            if sum(values)==0:
-                raise ValidationError(f"Specify one of the following fields: {attr_group} to identify where to fetch data.")
-            
+            if sum(values) > 1:
+                raise ValidationError(
+                    f"Only specify one of {attr_group} as have conflicting sources for the data."
+                )
+            if sum(values) == 0:
+                print(
+                    f"Neither {attr_group} was specified so the data will not be downloaded or copied into the input directory."
+                )
+
         return self
-    
+
     @model_validator(mode="after")
     def validate_module_spec(self):
         to_run = set(self.modules_to_run)
@@ -120,6 +124,8 @@ class Config(BaseModel):
 
         missing_templates = to_run - templates
         if missing_templates:
-            raise ValidationError(f"missing templates for modules that were set to run: {missing_templates = }.")
-        
+            raise ValidationError(
+                f"missing templates for modules that were set to run: {missing_templates = }."
+            )
+
         return self

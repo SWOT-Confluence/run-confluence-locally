@@ -1,3 +1,4 @@
+import re
 import shutil
 import tarfile
 import zipfile
@@ -19,7 +20,9 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
     # These paths are created as new directories but not added
     # to the dirs dictionary.
     mnt_dir_list = [
-        "diagnostics",
+        "diagnostics/prediagnostics",
+        "diagnostics/postdiagnostics/basin",
+        "diagnostics/postdiagnostics/reach",
         "flpe/busboi",
         "flpe/hivdi",
         "flpe/metroman/sets",
@@ -30,11 +33,12 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
         "input/sos",
         "input/sword",
         "input/swot",
-        "logs",
+        # "logs", # This doesn't seem to be used.
         "moi",
         "offline",
-        "output",
-        "validation",
+        "output/sos",
+        "output/dataframesvalidation/figs",
+        "validation/stats",
     ]
 
     dirs = {dir: (run_dir / dir) for dir in dir_list}
@@ -46,9 +50,32 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
     for dir in mnt_dir_list:
         (mnt_dir / dir).mkdir(mode=755, parents=True, exist_ok=True)
 
-    sp.call(['chmod', '-R', '755', str(run_dir)])
+    sp.run(["chmod", "-R", "755", str(run_dir)])
 
     return dirs
+
+
+def strip_sword_version_letters(target_dir: Path, target_version: str):
+    # Group 1: prefix up to 'v'
+    # Group 2: numeric version
+    # [a-zA-Z]: exactly one alphabetical character (dropped from new name)
+    # Group 3: remaining suffix ending with '.nc'
+    pattern = re.compile(r"(.*v)(\d+)[a-zA-Z](.*\.nc)$")
+
+    for file_path in target_dir.glob("*.nc"):
+        match = pattern.match(file_path.name)
+        if match:
+            prefix, version, suffix = match.groups()
+
+            # Make sure this file is actually our base version
+            if version != str(target_version):
+                continue
+
+            new_name = f"{prefix}{version}{suffix}"
+            if file_path.name != new_name:
+                new_path = file_path.with_name(new_name)
+                file_path.rename(new_path)
+                print(f"Renamed: {file_path.name} -> {new_name}")
 
 
 def _copy_nc_files(source_dir: Path, target_dir: Path, expected_n: int):
@@ -71,29 +98,30 @@ def _copy_or_download_sos(cfg: Config):
     # Copy files if they were configd and exist
     if cfg.priors_copy_dir is not None:
         _copy_nc_files(cfg.priors_copy_dir, sos_dir, 6)
-        return
+    elif cfg.priors_zenodo_doi is not None:
+        zenodo_download(
+            record_or_doi=cfg.priors_zenodo_doi,
+            output_dir=sos_dir,
+            file_glob="*.tar.gz",
+            verbosity=1,
+        )
+        archives = list(sos_dir.glob("*.tar.gz"))
+        if len(archives) > 1:
+            raise RuntimeError("More than 1 .tar.gz found for priors.")
+        elif len(archives) == 0:
+            raise RuntimeError("No .tar.gz file found for priors.")
+        archive_path = archives[0]
 
-    zenodo_download(
-        record_or_doi=cfg.priors_zenodo_doi,
-        output_dir=sos_dir,
-        file_glob="*.tar.gz",
-        verbosity=1,
-    )
-    archives = list(sos_dir.glob("*.tar.gz"))
-    if len(archives) > 1:
-        raise RuntimeError("More than 1 .tar.gz found for priors.")
-    elif len(archives) == 0:
-        raise RuntimeError("No .tar.gz file found for priors.")
-    archive_path = archives[0]
+        with tarfile.open(archive_path, "r:gz") as tar:
+            for member in tar.getmembers():
+                parts = Path(member.name).parts
+                # Bypass the root directory to extract directly into sos_dir
+                if len(parts) > 1:
+                    member.name = str(Path(*parts[1:]))
+                    tar.extract(member, path=sos_dir)
+        archive_path.unlink()
 
-    with tarfile.open(archive_path, "r:gz") as tar:
-        for member in tar.getmembers():
-            parts = Path(member.name).parts
-            # Bypass the root directory to extract directly into sos_dir
-            if len(parts) > 1:
-                member.name = str(Path(*parts[1:]))
-                tar.extract(member, path=sos_dir)
-    archive_path.unlink()
+    strip_sword_version_letters(sos_dir, cfg.sword_version)
 
 
 def _copy_or_download_sword(cfg: Config):
@@ -102,69 +130,71 @@ def _copy_or_download_sword(cfg: Config):
     # Copy files if they were configd and exist
     if cfg.sword_copy_dir is not None:
         _copy_nc_files(cfg.sword_copy_dir, sword_dir, 6)
-        return
+    elif cfg.sword_zenodo_doi is not None:
+        zenodo_download(
+            record_or_doi=cfg.sword_zenodo_doi,
+            output_dir=sword_dir,
+            file_glob="*_netcdf.zip",
+            verbosity=1,
+        )
+        archives = list(sword_dir.glob("*_netcdf.zip"))
+        if len(archives) > 1:
+            raise RuntimeError("More than 1 *_netcdf.zip found for priors.")
+        elif len(archives) == 0:
+            raise RuntimeError("No *_netcdf.zip file found for priors.")
+        archive_path = archives[0]
 
-    zenodo_download(
-        record_or_doi=cfg.sword_zenodo_doi,
-        output_dir=sword_dir,
-        file_glob="*_netcdf.zip",
-        verbosity=1,
-    )
-    archives = list(sword_dir.glob("*_netcdf.zip"))
-    if len(archives) > 1:
-        raise RuntimeError("More than 1 *_netcdf.zip found for priors.")
-    elif len(archives) == 0:
-        raise RuntimeError("No *_netcdf.zip file found for priors.")
-    archive_path = archives[0]
+        with zipfile.ZipFile(archive_path, "r") as z:
+            for member in z.infolist():
+                parts = Path(member.filename).parts
+                # Bypass the root directory to extract directly into sword_dir
+                if len(parts) > 1:
+                    member.filename = str(Path(*parts[1:]))
+                    z.extract(member, path=sword_dir)
+        archive_path.unlink()
 
-    with zipfile.ZipFile(archive_path, "r") as z:
-        for member in z.infolist():
-            parts = Path(member.filename).parts
-            # Bypass the root directory to extract directly into sword_dir
-            if len(parts) > 1:
-                member.filename = str(Path(*parts[1:]))
-                z.extract(member, path=sword_dir)
-    archive_path.unlink()
+    strip_sword_version_letters(sword_dir, cfg.sword_version)
 
 
 def _copy_or_download_svs(cfg: Config):
+    # svs file name does not include sword version number so renaming not needed.
+
     svs_dir = cfg.dirs["mnt"] / "validation"
 
     # Copy files if they were configd and exist
     if cfg.svs_copy_dir is not None:
         _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
-        return
+    elif cfg.svs_repo_filename is not None:
+        target_version = cfg.svs_repo_filename
+        dataset_doi = "doi:10.18419/DARUS-5843"
+        base_url = "https://darus.uni-stuttgart.de"
+        api_url = f"{base_url}/api/datasets/:persistentId/?persistentId={dataset_doi}"
+        response = requests.get(api_url)
+        response.raise_for_status()
 
-    target_version = cfg.svs_repo_filename
-    dataset_doi = "doi:10.18419/DARUS-5843"
-    base_url = "https://darus.uni-stuttgart.de"
-    api_url = f"{base_url}/api/datasets/:persistentId/?persistentId={dataset_doi}"
-    response = requests.get(api_url)
-    response.raise_for_status()
+        data = response.json()
+        files = data.get("data", {}).get("latestVersion", {}).get("files", [])
 
-    data = response.json()
-    files = data.get("data", {}).get("latestVersion", {}).get("files", [])
+        file_id = None
+        for f in files:
+            data_file = f.get("dataFile", {})
+            if data_file.get("filename") == target_version:
+                file_id = data_file.get("id")
+                break
 
-    file_id = None
-    for f in files:
-        data_file = f.get("dataFile", {})
-        if data_file.get("filename") == target_version:
-            file_id = data_file.get("id")
-            break
+        if file_id is None:
+            raise FileNotFoundError(
+                f"Filename {target_version} not found in SVS repository."
+            )
 
-    if file_id is None:
-        raise FileNotFoundError(
-            f"Filename {target_version} not found in SVS repository."
-        )
+        download_url = f"{base_url}/api/access/datafile/{file_id}"
 
-    download_url = f"{base_url}/api/access/datafile/{file_id}"
-
-    response = requests.get(download_url, stream=True)
-    response.raise_for_status()
-    with open(svs_dir / target_version, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
+        response = requests.get(download_url, stream=True)
+        response.raise_for_status()
+        with open(svs_dir / target_version, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
 
 
 def setup_dirs(cfg: Config):
@@ -183,9 +213,9 @@ def setup_dirs(cfg: Config):
     continent_path = resources.files("confluence") / "continent.json"
     shutil.copy2(continent_path, mnt_dir / "input" / "continent.json")
 
-    # _copy_or_download_sos(cfg)
-    # _copy_or_download_sword(cfg)
-    # _copy_or_download_svs(cfg)
+    _copy_or_download_sos(cfg)
+    _copy_or_download_sword(cfg)
+    _copy_or_download_svs(cfg)
 
     out_path = run_dir / "config.yml"
     with open(out_path, "w") as outfile:
