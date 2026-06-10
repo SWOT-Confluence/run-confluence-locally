@@ -8,6 +8,7 @@ fi
 {{ container_cmd.run }} run \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
+  {{ optional_binds | join('\n') }} \
   {{ sif_dir }}/consensus.sif \
   --mntdir /mnt/data \
   -r /mnt/data/input/reaches.json \

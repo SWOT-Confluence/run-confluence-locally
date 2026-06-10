@@ -16,6 +16,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ container_cmd.bind }} ${TASK_TMPDIR}:${TASK_TMPDIR}  \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ container_cmd.bind }} {{ mnt_dir }}/flpe/hivdi:/mnt/data/flpe/hivdi \
+    {{ optional_binds | join('\n') }} \
     {{ sif_dir }}/hivdi.sif \
     /mnt/data/input/reaches.json \
     --input-dir /mnt/data/input \

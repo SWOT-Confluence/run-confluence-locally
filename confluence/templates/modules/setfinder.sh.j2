@@ -4,6 +4,7 @@ START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 
 {{ container_cmd.run }} run \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/data \
+  {{ optional_binds | join('\n') }} \
   {{ sif_dir }}/setfinder.sif \
   -c continent.json \
   {{ module.reach_file | default('') }} \

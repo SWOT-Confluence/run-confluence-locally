@@ -9,6 +9,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ container_cmd.bind }} {{ mnt_dir }}/flpe/busboi:/mnt/data/output \
+    {{ optional_binds | join('\n') }} \
     {{ sif_dir }}/busboi.sif \
     --reachfile reaches.json \
     -i ${idx}

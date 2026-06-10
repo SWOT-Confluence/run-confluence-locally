@@ -64,9 +64,11 @@ class Config(BaseModel):
     roi_file: FilePath  # must exist
     sword_version: Literal["16", "17"]
 
+    priors_bind_dir: DirectoryPath = None
     priors_copy_dir: DirectoryPath = None
     priors_zenodo_doi: str = None
 
+    priors_bind_dir: DirectoryPath = None
     sword_copy_dir: DirectoryPath = None
     sword_zenodo_doi: str = None
 
@@ -95,12 +97,14 @@ class Config(BaseModel):
     # Will be populated during run setup.
     dirs: dict[str, Path] = Field(default_factory=dict)
 
-    # MODEL / AFTER
     @model_validator(mode="after")
     def validate_copy_xor_download(self):
+        # Only one of each element in the list here can logically be spec'd.
+        # We can't bind the priors AND copy them into our mount, so we should throw a
+        #  validation error and tell user to clarify in their config before continuing.
         exclusive_groups = [
-            ("priors_copy_dir", "priors_zenodo_doi"),
-            ("sword_copy_dir", "sword_zenodo_doi"),
+            ("priors_bind_dir", "priors_copy_dir", "priors_zenodo_doi"),
+            ("sword_bind_dir", "sword_copy_dir", "sword_zenodo_doi"),
             ("svs_copy_dir", "svs_repo_filename"),
         ]
 
@@ -112,7 +116,7 @@ class Config(BaseModel):
                 )
             if sum(values) == 0:
                 print(
-                    f"Neither {attr_group} was specified so the data will not be downloaded or copied into the input directory."
+                    f"None of {attr_group} was specified so the data will not be bound, copied, or mounted into the input directory."
                 )
 
         return self

@@ -31,6 +31,18 @@ def _get_platform_dict(platform: str):
     return {"run": platform, "bind": bind_cmd}
 
 
+def _get_optional_binds(cfg: Config, bind_cmd: str):
+    optional_binds = []
+    if cfg.priors_bind_dir:
+        optional_binds.append(
+            f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/input/sos:ro"
+        )
+    if cfg.sword_bind_dir:
+        optional_binds.append(
+            f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/input/sword:ro"
+        )
+
+
 def create_slurm_scripts(cfg: Config):
     env = Environment(loader=PackageLoader("confluence", "templates"), trim_blocks=True)
 
@@ -38,6 +50,7 @@ def create_slurm_scripts(cfg: Config):
     module_template_file = env.get_template("sbatch.sh.j2")
 
     platform_dict = _get_platform_dict(cfg.container_platform)
+    optional_binds = _get_optional_binds(cfg, platform_dict["bind"])
 
     for module_name in cfg.modules_to_run:
         template_args = cfg.module_templates[module_name]
@@ -46,6 +59,7 @@ def create_slurm_scripts(cfg: Config):
         command_template = env.get_template(template_args.j2_file)
         rendered_command = command_template.render(
             container_cmd=platform_dict,
+            optional_binds=optional_binds,
             mnt_dir=cfg.dirs["mnt"],
             sif_dir=cfg.dirs["sif"],
             sword_version=cfg.sword_version,

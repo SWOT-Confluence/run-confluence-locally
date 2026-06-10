@@ -10,6 +10,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     --env AWS_BATCH_JOB_ID='foo' \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ container_cmd.bind }} {{ mnt_dir }}/flpe/metroman:/mnt/data/output \
+    {{ optional_binds | join('\n') }} \
     {{ sif_dir }}/metroman.sif \
     -r metrosets.json \
     -s local \

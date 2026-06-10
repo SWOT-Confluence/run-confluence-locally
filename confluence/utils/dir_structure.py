@@ -86,7 +86,7 @@ def _copy_nc_files(source_dir: Path, target_dir: Path, expected_n: int):
             print(f"Copying {file.name}")
             shutil.copy2(str(file), str(target_dir / file.name))
         return
-    elif len(source_files) > 0:
+    else:
         raise ValueError(
             f"Expected {expected_n} files in priors dir but found {len(source_files)}\n{source_files}"
         )
@@ -95,10 +95,12 @@ def _copy_nc_files(source_dir: Path, target_dir: Path, expected_n: int):
 def _copy_or_download_sos(cfg: Config):
     sos_dir = cfg.dirs["mnt"] / "input" / "sos"
 
-    # Copy files if they were configd and exist
-    if cfg.priors_copy_dir is not None:
+    if cfg.priors_bind_dir:
+        print(f"SOS prior files will be bound from: {cfg.priors_bind_dir}")
+        return
+    if cfg.priors_copy_dir:
         _copy_nc_files(cfg.priors_copy_dir, sos_dir, 6)
-    elif cfg.priors_zenodo_doi is not None:
+    elif cfg.priors_zenodo_doi:
         zenodo_download(
             record_or_doi=cfg.priors_zenodo_doi,
             output_dir=sos_dir,
@@ -120,6 +122,11 @@ def _copy_or_download_sos(cfg: Config):
                     member.name = str(Path(*parts[1:]))
                     tar.extract(member, path=sos_dir)
         archive_path.unlink()
+    else:
+        print(
+            f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
+        )
+        return
 
     strip_sword_version_letters(sos_dir, cfg.sword_version)
 
@@ -127,7 +134,9 @@ def _copy_or_download_sos(cfg: Config):
 def _copy_or_download_sword(cfg: Config):
     sword_dir = cfg.dirs["mnt"] / "input" / "sword"
 
-    # Copy files if they were configd and exist
+    if cfg.sword_bind_dir:
+        print(f"SWORD files will be bound from: {cfg.sword_bind_dir}")
+        return
     if cfg.sword_copy_dir is not None:
         _copy_nc_files(cfg.sword_copy_dir, sword_dir, 6)
     elif cfg.sword_zenodo_doi is not None:
@@ -152,16 +161,22 @@ def _copy_or_download_sword(cfg: Config):
                     member.filename = str(Path(*parts[1:]))
                     z.extract(member, path=sword_dir)
         archive_path.unlink()
+    else:
+        print(
+            f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
+        )
+        return
 
     strip_sword_version_letters(sword_dir, cfg.sword_version)
 
 
 def _copy_or_download_svs(cfg: Config):
     # svs file name does not include sword version number so renaming not needed.
-
     svs_dir = cfg.dirs["mnt"] / "validation"
 
-    # Copy files if they were configd and exist
+    if cfg.svs_bind_dir:
+        print(f"SVS files will be bound from: {cfg.svs_bind_dir}")
+        return
     if cfg.svs_copy_dir is not None:
         _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
     elif cfg.svs_repo_filename is not None:
@@ -195,6 +210,10 @@ def _copy_or_download_svs(cfg: Config):
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
+    else:
+        print(
+            f"Unspecified source of SVS data. This is ok if it already exists in {cfg.dirs['mnt'].stem}."
+        )
 
 
 def setup_dirs(cfg: Config):

@@ -20,6 +20,7 @@ TODO
     - 
 """
 
+
 def strip_modifiers(name: str):
     modifiers = [
         "non_expanded_",
@@ -37,7 +38,7 @@ def strip_modifiers(name: str):
 
 
 def setup_modules(cfg: dict):
-    # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder) 
+    # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder)
     stripped_modules = set([strip_modifiers(module) for module in cfg.modules_to_run])
 
     if cfg.clone_repos:

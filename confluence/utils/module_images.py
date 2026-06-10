@@ -108,7 +108,6 @@ def clone_repos(
     print("")
 
 
-
 def _parse_entrypoint(dockerfile_path: Path) -> str | None:
     content = dockerfile_path.read_text()
     for line in content.split("\n"):
@@ -122,18 +121,42 @@ def _parse_entrypoint(dockerfile_path: Path) -> str | None:
 
 def _get_override_files(mod_dir: Path) -> list[str]:
     override_extensions = {
-        ".py", ".sh", ".bash", ".r", ".R", ".pl",
-        ".json", ".yaml", ".yml", ".cfg", ".toml", ".ini",
+        ".py",
+        ".sh",
+        ".bash",
+        ".r",
+        ".R",
+        ".pl",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".cfg",
+        ".toml",
+        ".ini",
     }
     skip_dirs = {
-        ".git", "__pycache__", ".github", ".eggs", "env",
-        "venv", ".mypy_cache", ".pytest_cache",
+        ".git",
+        "__pycache__",
+        ".github",
+        ".eggs",
+        "env",
+        "venv",
+        ".mypy_cache",
+        ".pytest_cache",
     }
     skip_files = {
-        "Dockerfile", "Dockerfile_input", "Dockerfile_deploy",
-        "Singularity.def", "requirements.txt", ".gitignore",
-        ".dockerignore", "setup.py", "setup.cfg", "pyproject.toml",
-        "LICENSE", "README.md",
+        "Dockerfile",
+        "Dockerfile_input",
+        "Dockerfile_deploy",
+        "Singularity.def",
+        "requirements.txt",
+        ".gitignore",
+        ".dockerignore",
+        "setup.py",
+        "setup.cfg",
+        "pyproject.toml",
+        "LICENSE",
+        "README.md",
     }
 
     override_files = []
@@ -156,7 +179,7 @@ def _build_def_file(
     dockerfile_name: str,
     def_filename: str,
     log_name: str,
-    is_output: bool = False
+    is_output: bool = False,
 ) -> Path | None:
     dockerfile_path = mod_dir / dockerfile_name
     if not dockerfile_path.exists():
@@ -170,7 +193,7 @@ def _build_def_file(
     def_content = [
         "Bootstrap: docker",
         f"From: ghcr.io/swot-confluence/{image_name}:{tag}\n",
-        "%files"
+        "%files",
     ]
 
     if has_requirements:
@@ -181,40 +204,43 @@ def _build_def_file(
         target = f"{rel_path}/." if src_full.is_dir() else rel_path
         def_content.append(f"    {target} /app/{rel_path}")
 
-    def_content.extend([
-        "\n%post",
-        f'    echo "=== {log_name}: {len(override_files)} local files overridden ==="'
-    ])
+    def_content.extend(
+        [
+            "\n%post",
+            f'    echo "=== {log_name}: {len(override_files)} local files overridden ==="',
+        ]
+    )
 
     if has_requirements:
-        def_content.extend([
-            f'    echo "=== {log_name}: reinstalling requirements.txt ==="',
-            "    if [ -f /app/requirements.txt ]; then",
-            "        /app/env/bin/python3 -m pip install --no-cache-dir -r /app/requirements.txt 2>/dev/null || \\",
-            "        python3 -m pip install --no-cache-dir -r /app/requirements.txt 2>/dev/null || \\",
-            f'        echo "WARNING: pip install failed for {log_name} — base image packages will be used"',
-            "    fi"
-        ])
+        def_content.extend(
+            [
+                f'    echo "=== {log_name}: reinstalling requirements.txt ==="',
+                "    if [ -f /app/requirements.txt ]; then",
+                "        /app/env/bin/python3 -m pip install --no-cache-dir -r /app/requirements.txt 2>/dev/null || \\",
+                "        python3 -m pip install --no-cache-dir -r /app/requirements.txt 2>/dev/null || \\",
+                f'        echo "WARNING: pip install failed for {log_name} — base image packages will be used"',
+                "    fi",
+            ]
+        )
 
     if is_output:
-        def_content.extend([
-            "    # Fix nested output directory",
-            "    if [ -d /app/output/output ]; then",
-            "        cp -rf /app/output/output/* /app/output/",
-            "        rm -rf /app/output/output",
-            "    fi"
-        ])
+        def_content.extend(
+            [
+                "    # Fix nested output directory",
+                "    if [ -d /app/output/output ]; then",
+                "        cp -rf /app/output/output/* /app/output/",
+                "        rm -rf /app/output/output",
+                "    fi",
+            ]
+        )
 
     if entrypoint:
-        def_content.extend([
-            "\n%runscript",
-            f'    exec {entrypoint} "$@"'
-        ])
+        def_content.extend(["\n%runscript", f'    exec {entrypoint} "$@"'])
 
     def_path = mod_dir / def_filename
     def_path.write_text("\n".join(def_content) + "\n")
     print(f"{log_name}: {def_filename} created ({len(override_files)} local files).")
-    
+
     return def_path
 
 
@@ -231,14 +257,16 @@ def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
             tag=tag,
             dockerfile_name=dockerfile_name,
             def_filename=def_name,
-            log_name=sub_name
+            log_name=sub_name,
         )
         if result:
             created.append(result)
     return created
 
 
-def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -> Path | list[Path] | None:
+def create_defs(
+    modules: list[str], repo_dir: str | Path, tag: str = "latest"
+) -> Path | list[Path] | None:
     repo_dir = _validate_dir(repo_dir)
 
     for mod in modules:
@@ -255,7 +283,7 @@ def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -
             dockerfile_name="Dockerfile",
             def_filename="Singularity.def",
             log_name=mod,
-            is_output=(mod == "output")
+            is_output=(mod == "output"),
         )
 
 
@@ -279,7 +307,7 @@ def _build_worker(
             ]
         case _:
             raise ValueError(f"{container_platform = } has not been implemented.")
-        
+
     # Isolate cache to prevent OCI pull race conditions during multithreading
     worker_cache_dir = repo_dir / ".apptainer_cache" / mod_name
     worker_cache_dir.mkdir(parents=True, exist_ok=True)
@@ -292,7 +320,7 @@ def _build_worker(
     with open(log_file_path, "w") as log_file:
         result = sp.run(
             cmd,
-            cwd=str(repo_dir/mod_name),
+            cwd=str(repo_dir / mod_name),
             stdout=log_file,
             stderr=sp.STDOUT,  # Merges stderr into stdout
             env=env,
