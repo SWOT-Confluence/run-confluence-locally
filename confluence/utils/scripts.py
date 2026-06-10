@@ -45,7 +45,7 @@ def create_slurm_scripts(cfg: Config):
         # Module specific command
         command_template = env.get_template(template_args.j2_file)
         rendered_command = command_template.render(
-            container_commands=platform_dict,
+            container_cmd=platform_dict,
             mnt_dir=cfg.dirs["mnt"],
             sif_dir=cfg.dirs["sif"],
             sword_version=cfg.sword_version,

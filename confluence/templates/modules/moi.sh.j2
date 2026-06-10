@@ -6,11 +6,11 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_commands.run }} run \
+  {{ container_cmd.run }} run \
     --env AWS_BATCH_JOB_ID='foo' \
-    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
-    {{ container_commands.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
-    {{ container_commands.bind }} {{ mnt_dir }}/moi:/mnt/data/output \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
+    {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/output \
     {{ sif_dir }}/moi.sif \
     -j basin.json \
     -v \

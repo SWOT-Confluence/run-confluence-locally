@@ -9,19 +9,16 @@ from confluence.utils.scripts import create_slurm_scripts, create_slurm_driver
 
 """
 TODO
-- convert config to pydantic object for explicit rules and typing
-    - move 'xxx_dir' keys into a cfg.dir dictionary for cleaner passing
 - args / entry points for continuing runs or reusing images
     - symlinks to data or images? 
     - should all data be located within the root (even if symlinked), or can 
     we bind it into the right place on the mnt? That would be the most slick,
     but maybe not leave as much of a record. 
-- Check downloaded/copied sword version matches the sword_version key.
-    - pass 'sword_version' down into the validation module for reach_id_vXX
-    - check 17 vs 17b/c etc.
 - update readme
+    - example usage of new code (end to end and entry points)
+    - check for anything referencing notebook based code
+    - 
 """
-
 
 def strip_modifiers(name: str):
     modifiers = [
@@ -40,9 +37,8 @@ def strip_modifiers(name: str):
 
 
 def setup_modules(cfg: dict):
-    to_run = cfg.modules_to_run
-    # set to removed duplicates (i.e. expanded and non-expanded setfinder)
-    stripped_modules = set([strip_modifiers(module) for module in to_run])
+    # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder) 
+    stripped_modules = set([strip_modifiers(module) for module in cfg.modules_to_run])
 
     if cfg.clone_repos:
         clone_repos(
@@ -53,29 +49,13 @@ def setup_modules(cfg: dict):
             cfg.dirs["run"] / "modules",
         )
     else:
-        print("Using existing module files.")
+        print("Using existing repository files.")
 
     if not cfg.build_modules:
         print("Skipping module rebuild.")
         return
 
-    for mod in stripped_modules:
-        dockerfile = cfg.dirs["modules"] / mod / "Dockerfile"
-        if dockerfile.exists():
-            print(f"[{mod}]")
-            with open(dockerfile) as f:
-                lines = f.readlines()
-
-                for line in lines:
-                    if line.strip().startswith(("COPY", "ENTRYPOINT", "FROM")):
-                        print(line.strip())
-            print()
-        else:
-            print(f"{mod} -> (Dockerfile x)")
-            print()
-
-    for module in stripped_modules:
-        create_defs(module, cfg.dirs["modules"], cfg.default_image_release_tag)
+    create_defs(stripped_modules, cfg.dirs["modules"], cfg.default_image_release_tag)
 
     create_sifs(
         stripped_modules, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"]

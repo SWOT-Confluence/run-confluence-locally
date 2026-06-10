@@ -5,12 +5,21 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
+export MPLBACKEND=agg
+TASK_TMPDIR=/tmp/hivdi_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+mkdir -p ${TASK_TMPDIR}/arviz ${TASK_TMPDIR}/pytensor
+
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_commands.run }} run \
-    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
-    {{ container_commands.bind }} {{ mnt_dir }}/flpe/hivdi:/mnt/data/flpe/hivdi \
+  {{ container_cmd.run }} run \
+    --env XDG_CACHE_HOME=${TASK_TMPDIR} \
+    --env PYTENSOR_FLAGS=base_compiledir=${TASK_TMPDIR}/pytensor \
+    {{ container_cmd.bind }} ${TASK_TMPDIR}:${TASK_TMPDIR}  \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_cmd.bind }} {{ mnt_dir }}/flpe/hivdi:/mnt/data/flpe/hivdi \
     {{ sif_dir }}/hivdi.sif \
     /mnt/data/input/reaches.json \
     --input-dir /mnt/data/input \
     -i ${idx}
 done
+
+rm -rf ${TASK_TMPDIR}  

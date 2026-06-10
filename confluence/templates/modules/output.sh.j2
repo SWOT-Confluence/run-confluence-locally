@@ -1,13 +1,13 @@
 START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 
-{{ container_commands.run }} run \
-  {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
-  {{ container_commands.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
-  {{ container_commands.bind }} {{ mnt_dir }}/diagnostics:/mnt/data/diagnostics \
-  {{ container_commands.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
-  {{ container_commands.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
-  {{ container_commands.bind }} {{ mnt_dir }}/validation:/mnt/data/validation \
-  {{ container_commands.bind }} {{ mnt_dir }}/output:/mnt/data/output \
+{{ container_cmd.run }} run \
+  {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+  {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
+  {{ container_cmd.bind }} {{ mnt_dir }}/diagnostics:/mnt/data/diagnostics \
+  {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
+  {{ container_cmd.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
+  {{ container_cmd.bind }} {{ mnt_dir }}/validation:/mnt/data/validation \
+  {{ container_cmd.bind }} {{ mnt_dir }}/output:/mnt/data/output \
   {{ sif_dir }}/output.sif \
   -s local \
   -j /app/metadata/metadata.json \

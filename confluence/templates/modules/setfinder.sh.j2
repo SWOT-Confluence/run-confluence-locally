@@ -2,8 +2,8 @@ START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
 
 {% set expanded_flag = "-e" if module.expanded else "" %}
 
-{{ container_commands.run }} run \
-  {{ container_commands.bind }} {{ mnt_dir }}/input:/data \
+{{ container_cmd.run }} run \
+  {{ container_cmd.bind }} {{ mnt_dir }}/input:/data \
   {{ sif_dir }}/setfinder.sif \
   -c continent.json \
   {{ module.reach_file | default('') }} \
