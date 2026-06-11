@@ -40,7 +40,7 @@ class Config(BaseModel):
 
         ext = file_path.suffix.lower()
         if ext in [".yml", ".yaml"]:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 cfg_dict = yaml.safe_load(f)
         else:
             raise ValueError("config file must have a .yml or .yaml extension")
@@ -80,7 +80,7 @@ class Config(BaseModel):
     default_image_release_tag: str
 
     max_reaches: int = Field(0, gte=0)
-    overwrite_run: bool
+    overwrite_run: bool = False
     clone_repos: bool
 
     build_modules: bool
@@ -103,8 +103,8 @@ class Config(BaseModel):
     @model_validator(mode="after")
     def validate_copy_xor_download(self):
         # Only one of each element in the list here can logically be spec'd.
-        # We can't bind the priors AND copy them into our mount, so we should throw a
-        #  validation error and tell user to clarify in their config before continuing.
+        # We wouldn't bind the priors AND copy them into our mount, so we should throw a
+        # validation error and tell user to clarify in their config before running.
         exclusive_groups = [
             ("priors_bind_dir", "priors_copy_dir", "priors_zenodo_doi"),
             ("sword_bind_dir", "sword_copy_dir", "sword_zenodo_doi"),
@@ -112,15 +112,19 @@ class Config(BaseModel):
         ]
 
         for attr_group in exclusive_groups:
+            no_data_flag = False
             values = [getattr(self, a) is not None for a in attr_group]
             if sum(values) > 1:
-                raise ValueError(
-                    f"Only specify one of {attr_group} as have conflicting sources for the data."
-                )
+                raise ValueError(f"Only specify one of {attr_group} as have conflicting sources for the data.")
             if sum(values) == 0:
                 print(
-                    f"None of {attr_group} was specified so the data will not be bound, copied, or mounted into the input directory."
+                    f"None of {attr_group} was specified so the data will not be "
+                    + "bound, copied, or mounted into the input directory."
                 )
+                no_data_flag = True
+
+        if no_data_flag:
+            print("This is not an issue if these data already exist in the input dir, otherwise the job will fail.")
 
         return self
 
@@ -134,7 +138,8 @@ class Config(BaseModel):
         if binds_input and runs_input:
             raise ValueError(
                 "Binding the input SWOT files will only work if you are skipping 'input' and 'prediagnostics' modules. "
-                + "The directory will bind as read only so these modules will not be able to write (input) or modify (prediagnostics) the files."
+                + "The directory will bind as read only so these modules will not be able to "
+                + "write (input) or modify (prediagnostics) the files."
             )
 
         return self
@@ -149,16 +154,11 @@ class Config(BaseModel):
 
         root_fs = Path(self.root_dir).parts[1]
         offending = [
-            bp
-            for bp in bind_paths
-            if getattr(self, bp) is not None
-            and Path(getattr(self, bp)).parts[1] != root_fs
+            bp for bp in bind_paths if getattr(self, bp) is not None and Path(getattr(self, bp)).parts[1] != root_fs
         ]
 
         if offending:
-            raise ValueError(
-                f"{offending} bind paths are not on the same filesystem as the root_dir."
-            )
+            raise ValueError(f"{offending} bind paths are not on the same filesystem as the root_dir.")
 
         return self
 
@@ -169,8 +169,6 @@ class Config(BaseModel):
 
         missing_templates = to_run - templates
         if missing_templates:
-            raise ValueError(
-                f"missing templates for modules that were set to run: {missing_templates = }."
-            )
+            raise ValueError(f"missing templates for modules that were set to run: {missing_templates = }.")
 
         return self

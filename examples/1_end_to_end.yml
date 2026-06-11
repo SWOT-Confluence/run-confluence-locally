@@ -7,22 +7,22 @@ roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
 # priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
 # priors_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
-priors_zenodo_doi: "10.5281/zenodo.20541765"
+# priors_zenodo_doi: "10.5281/zenodo.20541765"
 
 # sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
 # sword_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
-sword_zenodo_doi: "10.5281/zenodo.15299138"
+# sword_zenodo_doi: "10.5281/zenodo.15299138"
 
 # svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/validation"
-svs_repo_filename: "SVS_v1_0_1.nc"
+# svs_repo_filename: "SVS_v1_0_1.nc"
 
 default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `module_branches`
 default_image_release_tag: 4.0.0
 
-clone_repos: True
-build_modules: True
-submit_driver: True
+clone_repos: False
+build_modules: False
+submit_driver: False
 
 modules_to_run:
   - "expanded_setfinder"
@@ -36,12 +36,17 @@ modules_to_run:
   - "unconstrained_momma"
   - "busboi"
   - "hivdi"
-  - "sic4dvar"
+  # - "sic4dvar"
   - "consensus"
   - "validation"
   - "output"
 
+modules_to_build:
+  - "setfinder"
+  - "busboi"
+
 module_branches:
+  setfinder: "tedlanghorst:main"
   busboi: "BUSBOI_main"
 
 
@@ -51,7 +56,7 @@ hpc:
   time: "1-00:00:00"
   batch_size: 1000
   concurrent_jobs: 400
-  reach_chunks: 20
+  reach_chunks: 1
 
 
 # Really a module argument but so many of them use it we spec it once.

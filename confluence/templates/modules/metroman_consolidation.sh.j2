@@ -1,4 +1,4 @@
-START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
 
 {{ container_cmd.run }} run \
   --env AWS_BATCH_JOB_ID='foo' \
@@ -6,4 +6,4 @@ START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
   {{ container_cmd.bind }} {{ mnt_dir }}/flpe/metroman:/mnt/data/flpe \
   {{ optional_binds | join(' \\\n  ') }} \
   {{ sif_dir }}/metroman_consolidation.sif \
-  -i ${START_INDEX}
+  -i ${INDEX}

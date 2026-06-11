@@ -37,10 +37,10 @@ submit_driver: True
 modules_to_run:
   - "expanded_setfinder"
   - "expanded_combine_data"
-  - "input"
+  # - "input"
   - "non_expanded_setfinder"
   - "non_expanded_combine_data"
-  # - "prediagnostics"
+  - "prediagnostics"
   # # # - "priors"
   - "metroman"
   - "metroman_consolidation"

@@ -1,4 +1,4 @@
-START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
 
 {% set expanded_flag = "-e" if module.expanded else "" %}
 
@@ -13,4 +13,4 @@ START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
   -o /data \
   -n /data \
   -a MetroMan HiVDI SIC NeoBAM \
-  -i ${START_INDEX}
+  -i ${INDEX}

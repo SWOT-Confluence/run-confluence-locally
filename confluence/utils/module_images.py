@@ -1,12 +1,12 @@
 import os
-import shutil
 import re
-from pathlib import Path
+import shutil
 import subprocess as sp
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 from confluence.utils.config import Config
-from confluence.utils.module_names import strip_modifiers, get_repo_name, get_image_name
+from confluence.utils.module_names import get_image_name, get_repo_name, strip_modifiers
 
 
 def _validate_dir(dir: str | Path) -> Path:
@@ -48,9 +48,7 @@ def _clone_worker(
         result = sp.run(cmd, cwd=repo_dir, stdout=log_file, stderr=sp.STDOUT)
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"Clone failed with exit code {result.returncode}. See {log_file_path}"
-        )
+        raise RuntimeError(f"Clone failed with exit code {result.returncode}. See {log_file_path}")
 
     return name, log_file_path
 
@@ -245,9 +243,7 @@ def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
         )
 
 
-def create_defs(
-    modules: list[str], repo_dir: str | Path, tag: str = "latest"
-) -> Path | list[Path] | None:
+def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -> Path | list[Path] | None:
     repo_dir = _validate_dir(repo_dir)
 
     for mod in modules:
@@ -308,9 +304,7 @@ def _build_worker(
         )
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"Build failed with exit code {result.returncode}. See {log_file_path}"
-        )
+        raise RuntimeError(f"Build failed with exit code {result.returncode}. See {log_file_path}")
 
     return mod_name, log_file_path
 
@@ -374,9 +368,7 @@ def create_sifs(
 
 
 def check_needed_images(image_dir: Path, modules: list[str]):
-    missing_images = [
-        mod for mod in modules if not (image_dir / f"{mod}.sif").is_file()
-    ]
+    missing_images = [mod for mod in modules if not (image_dir / f"{mod}.sif").is_file()]
     if missing_images:
         raise RuntimeError(
             f"Images not found for modules ({missing_images}). This will occur if you did not specify "
@@ -406,9 +398,7 @@ def setup_modules(cfg: Config):
     print("\n")
     if cfg.build_modules:
         create_defs(to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
-        create_sifs(
-            to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"]
-        )
+        create_sifs(to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"])
     else:
         print("Skipping module rebuild.")
 

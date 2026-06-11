@@ -1,12 +1,12 @@
 import re
 import shutil
-import tempfile
 import subprocess as sp
+import tempfile
 from importlib import resources
 from pathlib import Path
 
-import yaml
 import requests
+import yaml
 from zenodo_get import download as zenodo_download
 
 from confluence.utils.config import Config
@@ -86,9 +86,7 @@ def _copy_nc_files(source_dir: Path, target_dir: Path, expected_n: int):
             shutil.copy2(str(file), str(target_dir / file.name))
         return
     else:
-        raise ValueError(
-            f"Expected {expected_n} files in priors dir but found {len(source_files)}\n{source_files}"
-        )
+        raise ValueError(f"Expected {expected_n} files in priors dir but found {len(source_files)}\n{source_files}")
 
 
 def _copy_or_download_sos(cfg: Config):
@@ -197,9 +195,7 @@ def _copy_or_download_svs(cfg: Config):
                 break
 
         if file_id is None:
-            raise FileNotFoundError(
-                f"Filename {target_version} not found in SVS repository."
-            )
+            raise FileNotFoundError(f"Filename {target_version} not found in SVS repository.")
 
         download_url = f"{base_url}/api/access/datafile/{file_id}"
 
