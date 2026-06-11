@@ -3,6 +3,7 @@ from importlib import resources
 from jinja2 import Environment, PackageLoader
 
 from confluence.utils.config import Config
+from confluence.utils.module_names import get_repo_name
 
 TEMPLATES_PATH = resources.files("confluence.templates")
 
@@ -32,26 +33,37 @@ def _get_platform_dict(platform: str):
 
 
 def _get_optional_binds(cfg: Config, bind_cmd: str):
-    optional_binds = []
+    # Some modules look in different places for input data so we just set up two binds here instead
+    # of making module-specific binds. The other way to do it would be to pass each bind specifically
+    # into each module template and define where they look for each data source data. This is maybe
+    # lazy but easier than maintaining each module's inputs. Lazy by definition actually- but I don't
+    # see any major downsides or path conflicts arising.
+    binds = []
+    if cfg.swot_input_bind_dir:
+        binds.append(f"{bind_cmd} {cfg.swot_input_bind_dir}:/mnt/data/input/swot:ro")
     if cfg.priors_bind_dir:
-        optional_binds.append(
-            f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/input/sos:ro"
-        )
+        binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/data/sos:ro")
+        # binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/sos:ro")
+        binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/input/sos:ro")
     if cfg.sword_bind_dir:
-        optional_binds.append(
-            f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/input/sword:ro"
-        )
+        binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/data/sword:ro")
+        # binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/sword:ro")
+        binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/input/sword:ro")
+    return binds
 
 
-def create_slurm_scripts(cfg: Config):
+def create_module_scripts(cfg: Config):
     env = Environment(loader=PackageLoader("confluence", "templates"), trim_blocks=True)
 
     # SBATCH header commands
     module_template_file = env.get_template("sbatch.sh.j2")
+    # TODO: truly local runs (not HPC) would want to remove this header? Would also need
+    # to handle the indexing that relies on job arrays in the driver script...
 
     platform_dict = _get_platform_dict(cfg.container_platform)
     optional_binds = _get_optional_binds(cfg, platform_dict["bind"])
 
+    print("\n\nWriting module scripts.")
     for module_name in cfg.modules_to_run:
         template_args = cfg.module_templates[module_name]
 
@@ -62,6 +74,7 @@ def create_slurm_scripts(cfg: Config):
             optional_binds=optional_binds,
             mnt_dir=cfg.dirs["mnt"],
             sif_dir=cfg.dirs["sif"],
+            module_dir=cfg.dirs["modules"] / get_repo_name(module_name),
             sword_version=cfg.sword_version,
             module=template_args.module_args,
             run=cfg.run_name,
@@ -80,7 +93,6 @@ def create_slurm_scripts(cfg: Config):
         script_path = cfg.dirs["sh_scripts"] / f"{module_name}.sh"
         with open(script_path, "w") as file:
             file.write(rendered_script)
-        print(f"{module_name} script written.")
 
 
 def create_slurm_driver(cfg: Config):
@@ -117,3 +129,10 @@ def create_slurm_driver(cfg: Config):
         f.write(rendered_script)
 
     return out_path
+
+
+def write_scripts(cfg: Config):
+    create_module_scripts(cfg)
+    driver_path = create_slurm_driver(cfg)
+
+    return driver_path

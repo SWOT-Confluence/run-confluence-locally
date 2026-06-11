@@ -20,3 +20,16 @@ dependencies = [
     "ruff==0.15.15",
     "zenodo-get>=3.0.3",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+]

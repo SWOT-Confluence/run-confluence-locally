@@ -11,7 +11,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
     {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/output \
-    {{ optional_binds | join('\n') }} \
+    {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/moi.sif \
     -j basin.json \
     -v \

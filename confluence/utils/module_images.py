@@ -5,19 +5,8 @@ from pathlib import Path
 import subprocess as sp
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-
-# Modules with repo names that differ from `regular` name.
-# Defaults to the `regular` name if not listed.
-REPO_NAME_MAP = {
-    "offline": "offline-discharge-data-product-creation",
-    "moi": "MOI",
-    "validation": "Validation",
-    "hivdi": "h2ivdi",
-    "busboi": "BUSBOI",
-    "lakeflow": "LakeFlow_Confluence",
-}
-
-IMAGE_NAME_MAP = {"hivdi": "h2ivdi"}
+from confluence.utils.config import Config
+from confluence.utils.module_names import strip_modifiers, get_repo_name, get_image_name
 
 
 def _validate_dir(dir: str | Path) -> Path:
@@ -39,7 +28,7 @@ def _clone_worker(
 ) -> tuple[str, Path]:
     branch = branch_map.get(name, default_branch)
     path = repo_dir / name
-    repo_name = REPO_NAME_MAP.get(name, name)
+    repo_name = get_repo_name(name)
 
     if ":" in branch:
         custom_org, actual_branch = branch.split(":", 1)
@@ -80,7 +69,7 @@ def clone_repos(
     log_dir = repo_dir / "logs"
     log_dir.mkdir(exist_ok=True)
 
-    print(f"\n\nCloning {len(repo_names)} module repositories: {repo_names}")
+    print(f"Cloning {len(repo_names)} module repositories: {repo_names}")
     print(f"Full logs of clone progress in: {log_dir}")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -104,8 +93,6 @@ def clone_repos(
                 print(f"[{name}] Complete")
             except Exception as e:
                 print(f"[{name}]. Check {log_dir}. \nException: {e}")
-
-    print("")
 
 
 def _parse_entrypoint(dockerfile_path: Path) -> str | None:
@@ -241,17 +228,14 @@ def _build_def_file(
     def_path.write_text("\n".join(def_content) + "\n")
     print(f"{log_name}: {def_filename} created ({len(override_files)} local files).")
 
-    return def_path
-
 
 def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
     configs = [
         ("lakeflow_input", "Dockerfile_input", "Singularity_lakeflow_input.def"),
         ("lakeflow_deploy", "Dockerfile_deploy", "Singularity_lakeflow_deploy.def"),
     ]
-    created = []
     for sub_name, dockerfile_name, def_name in configs:
-        result = _build_def_file(
+        _build_def_file(
             mod_dir=mod_dir,
             image_name=sub_name,
             tag=tag,
@@ -259,9 +243,6 @@ def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
             def_filename=def_name,
             log_name=sub_name,
         )
-        if result:
-            created.append(result)
-    return created
 
 
 def create_defs(
@@ -275,8 +256,8 @@ def create_defs(
         if mod == "lakeflow":
             return _create_lakeflow_defs(mod_dir, tag)
 
-        image_name = IMAGE_NAME_MAP.get(mod, mod)
-        return _build_def_file(
+        image_name = get_image_name(mod)
+        _build_def_file(
             mod_dir=mod_dir,
             image_name=image_name,
             tag=tag,
@@ -390,3 +371,46 @@ def create_sifs(
                 print(f"[{mod_name}] Complete")
             except Exception as e:
                 print(f"[{mod_name}] Failed. See {log_dir}\nException: {e}")
+
+
+def check_needed_images(image_dir: Path, modules: list[str]):
+    missing_images = [
+        mod for mod in modules if not (image_dir / f"{mod}.sif").is_file()
+    ]
+    if missing_images:
+        raise RuntimeError(
+            f"Images not found for modules ({missing_images}). This will occur if you did not specify "
+            + "all modules without images in the config arg `modules_to_build`. Either remove this argument "
+            + "entirely to build all modules or include these missing modules."
+        )
+
+
+def setup_modules(cfg: Config):
+    # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder)
+    to_build = cfg.modules_to_build if cfg.modules_to_build else cfg.modules_to_run
+
+    to_build = set([strip_modifiers(module) for module in to_build])
+
+    print("\n")
+    if cfg.clone_repos:
+        clone_repos(
+            to_build,
+            cfg.default_github_username,
+            cfg.default_repository_branch,
+            cfg.module_branches,
+            cfg.dirs["run"] / "modules",
+        )
+    else:
+        print("Using existing repository files.")
+
+    print("\n")
+    if cfg.build_modules:
+        create_defs(to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
+        create_sifs(
+            to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"]
+        )
+    else:
+        print("Skipping module rebuild.")
+
+    to_run = set([strip_modifiers(module) for module in cfg.modules_to_run])
+    check_needed_images(cfg.dirs["sif"], to_run)

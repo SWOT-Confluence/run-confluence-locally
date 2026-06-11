@@ -13,7 +13,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
     {{ container_cmd.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
     {{ container_cmd.bind }} {{ mnt_dir }}/validation:/mnt/data/output \
-    {{ optional_binds | join('\n') }} \
+    {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/validation.sif \
     -r reaches.json \
     -t unconstrained \

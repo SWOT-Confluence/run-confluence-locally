@@ -1,7 +1,6 @@
 import re
 import shutil
-import tarfile
-import zipfile
+import tempfile
 import subprocess as sp
 from importlib import resources
 from pathlib import Path
@@ -33,11 +32,11 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
         "input/sos",
         "input/sword",
         "input/swot",
-        # "logs", # This doesn't seem to be used.
+        "logs",
         "moi",
         "offline",
         "output/sos",
-        "output/dataframesvalidation/figs",
+        "validation/figs",
         "validation/stats",
     ]
 
@@ -114,18 +113,14 @@ def _copy_or_download_sos(cfg: Config):
             raise RuntimeError("No .tar.gz file found for priors.")
         archive_path = archives[0]
 
-        with tarfile.open(archive_path, "r:gz") as tar:
-            for member in tar.getmembers():
-                parts = Path(member.name).parts
-                # Bypass the root directory to extract directly into sos_dir
-                if len(parts) > 1:
-                    member.name = str(Path(*parts[1:]))
-                    tar.extract(member, path=sos_dir)
+        cmd = ["tar", "--strip-components=1", "-xzf", str(archive_path), "-C", str(sos_dir)]
+        sp.run(cmd, check=True)
         archive_path.unlink()
+
     else:
-        print(
-            f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
-        )
+        # print(
+        #     f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
+        # )
         return
 
     strip_sword_version_letters(sos_dir, cfg.sword_version)
@@ -153,18 +148,25 @@ def _copy_or_download_sword(cfg: Config):
             raise RuntimeError("No *_netcdf.zip file found for priors.")
         archive_path = archives[0]
 
-        with zipfile.ZipFile(archive_path, "r") as z:
-            for member in z.infolist():
-                parts = Path(member.filename).parts
-                # Bypass the root directory to extract directly into sword_dir
-                if len(parts) > 1:
-                    member.filename = str(Path(*parts[1:]))
-                    z.extract(member, path=sword_dir)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sp.run(
+                ["unzip", "-q", str(archive_path), "-d", tmpdir],
+                check=True,
+            )
+
+            root_dir = next(Path(tmpdir).iterdir())
+
+            shutil.copytree(
+                root_dir,
+                sword_dir,
+                dirs_exist_ok=True,
+            )
+
         archive_path.unlink()
     else:
-        print(
-            f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
-        )
+        # print(
+        #     f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
+        # )
         return
 
     strip_sword_version_letters(sword_dir, cfg.sword_version)
@@ -174,9 +176,6 @@ def _copy_or_download_svs(cfg: Config):
     # svs file name does not include sword version number so renaming not needed.
     svs_dir = cfg.dirs["mnt"] / "validation"
 
-    if cfg.svs_bind_dir:
-        print(f"SVS files will be bound from: {cfg.svs_bind_dir}")
-        return
     if cfg.svs_copy_dir is not None:
         _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
     elif cfg.svs_repo_filename is not None:
@@ -211,9 +210,10 @@ def _copy_or_download_svs(cfg: Config):
                 if chunk:
                     f.write(chunk)
     else:
-        print(
-            f"Unspecified source of SVS data. This is ok if it already exists in {cfg.dirs['mnt'].stem}."
-        )
+        # print(
+        #     f"Unspecified source of SVS data. This is ok if it already exists in {cfg.dirs['mnt'].stem}."
+        # )
+        return
 
 
 def setup_dirs(cfg: Config):
@@ -222,7 +222,11 @@ def setup_dirs(cfg: Config):
 
     if cfg.overwrite_run and run_dir.is_dir():
         print("Removing existing directory before running")
-        shutil.rmtree(run_dir)
+        try:
+            shutil.rmtree(run_dir)
+        except Exception as e:
+            print(f"Failed to remove the existing run directory, likely due to open file handles: {e}")
+            raise
 
     dir_dict = _create_directory_structure(run_dir, mnt_dir)
     cfg.dirs = dir_dict

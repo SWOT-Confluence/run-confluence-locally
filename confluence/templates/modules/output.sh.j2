@@ -8,7 +8,7 @@ START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
   {{ container_cmd.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
   {{ container_cmd.bind }} {{ mnt_dir }}/validation:/mnt/data/validation \
   {{ container_cmd.bind }} {{ mnt_dir }}/output:/mnt/data/output \
-  {{ optional_binds | join('\n') }} \
+  {{ optional_binds | join(' \\\n  ') }} \
   {{ sif_dir }}/output.sif \
   -s local \
   -j /app/metadata/metadata.json \
