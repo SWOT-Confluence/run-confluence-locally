@@ -10,6 +10,7 @@ fi
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data \
+    {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/input.sif \
     -v {{ sword_version }} \
     -r /mnt/data/expanded_reaches_of_interest.json \

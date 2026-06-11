@@ -1,9 +1,7 @@
-INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
-
 {{ container_cmd.run }} run \
   --env AWS_BATCH_JOB_ID='foo' \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ container_cmd.bind }} {{ mnt_dir }}/flpe/metroman:/mnt/data/flpe \
   {{ optional_binds | join(' \\\n  ') }} \
   {{ sif_dir }}/metroman_consolidation.sif \
-  -i ${INDEX}
+  -i ${SLURM_ARRAY_TASK_ID}

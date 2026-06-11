@@ -76,9 +76,11 @@ def _get_optional_binds(cfg: Config, bind_cmd: str):
         binds.append(f"{bind_cmd} {cfg.swot_input_bind_dir}:/mnt/data/input/swot:ro")
     if cfg.priors_bind_dir:
         binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/data/sos:ro")
+        binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/sos:ro")
         binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/input/sos:ro")
     if cfg.sword_bind_dir:
         binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/data/sword:ro")
+        binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/sword:ro")
         binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/input/sword:ro")
     return binds
 

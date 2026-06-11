@@ -1,5 +1,3 @@
-INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
-
 {% set expanded_flag = "-e" if module.expanded else "" %}
 
 {{ container_cmd.run }} run \
@@ -13,4 +11,4 @@ INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
   -o /data \
   -n /data \
   -a MetroMan HiVDI SIC NeoBAM \
-  -i ${INDEX}
+  -i ${SLURM_ARRAY_TASK_ID}

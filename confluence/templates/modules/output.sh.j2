@@ -1,5 +1,3 @@
-INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
-
 {{ container_cmd.run }} run \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
@@ -14,4 +12,4 @@ INDEX=${TASK_INDEX:?"Fatal Error: TASK_INDEX is undefined. Terminating script."}
   -j /app/metadata/metadata.json \
   -m {{ module.groups }} \
   -v {{ sword_version }} \
-  -i ${INDEX}
+  -i ${SLURM_ARRAY_TASK_ID}
