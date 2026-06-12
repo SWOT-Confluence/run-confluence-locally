@@ -36,7 +36,6 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
         "moi",
         "offline",
         "output/sos",
-        "svs",
         "validation/figs",
         "validation/stats",
     ]
@@ -173,7 +172,7 @@ def _copy_or_download_sword(cfg: Config):
 
 def _copy_or_download_svs(cfg: Config):
     # svs file name does not include sword version number so renaming not needed.
-    svs_dir = cfg.dirs["mnt"] / "svs"
+    svs_dir = cfg.dirs["mnt"] / "validation"
 
     if cfg.svs_copy_dir is not None:
         _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
