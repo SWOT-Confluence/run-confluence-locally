@@ -1,28 +1,28 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
-run_name: "11_end_to_end"
+run_name: "end_to_end"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
-priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
+# priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
 # priors_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
-# priors_zenodo_doi: "10.5281/zenodo.20541765"
+priors_zenodo_doi: "10.5281/zenodo.20541765"
 
-sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
+# sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
 # sword_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
-# sword_zenodo_doi: "10.5281/zenodo.15299138"
+sword_zenodo_doi: "10.5281/zenodo.15299138"
 
-svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/validation"
-# svs_repo_filename: "SVS_v1_0_1.nc"
+# svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/validation"
+svs_repo_filename: "SVS_v1_0_1.nc"
 
 default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `repo_branches`
 default_image_release_tag: 4.0.0
 
 clone_repos: True
-build_modules: False
-submit_driver: False
+build_modules: True
+submit_driver: True
 
 modules_to_run:
   - "expanded_setfinder"
