@@ -1,14 +1,14 @@
 {% set expanded_flag = "-e" if module.expanded else "" %}
 
 {{ container_cmd.run }} run \
-  {{ container_cmd.bind }} {{ mnt_dir }}/input:/data \
+  {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ optional_binds | join(' \\\n  ') }} \
   {{ sif_dir }}/setfinder.sif \
   -c continent.json \
   {{ module.reach_file }} \
   {{ expanded_flag }} \
   -s {{ sword_version }} \
-  -o /data \
-  -n /data \
+  -o /mnt/data/input \
+  -n /mnt/data/input \
   -a MetroMan HiVDI SIC NeoBAM \
   -i ${SLURM_ARRAY_TASK_ID}

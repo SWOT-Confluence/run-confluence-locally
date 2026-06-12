@@ -1,8 +1,8 @@
 {% set expanded_flag = "-e" if module.expanded else "" %}
 
 {{ container_cmd.run }} run \
-    {{ container_cmd.bind }} {{ mnt_dir }}/input:/data \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ sif_dir }}/combine_data.sif \
     {{ expanded_flag }} \
-    -d /data \
+    -d /mnt/data/input \
     -s {{ sword_version }}

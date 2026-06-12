@@ -229,8 +229,12 @@ def setup_dirs(cfg: Config):
 
     shutil.copy2(cfg.roi_file, mnt_dir / "input" / "reaches_of_interest.json")
 
-    continent_path = resources.files("confluence") / "continent.json"
-    shutil.copy2(continent_path, mnt_dir / "input" / "continent.json")
+    source_path = resources.files("confluence") / "continent.json"
+    dest_path = mnt_dir / "input" / "continent.json"
+    # this file changes after non_expanded_setfinder and we don't want to overwrite it
+    # if we are restarting a run.
+    if not dest_path.is_file():
+        shutil.copy2(source_path, dest_path)
 
     _copy_or_download_sos(cfg)
     _copy_or_download_sword(cfg)

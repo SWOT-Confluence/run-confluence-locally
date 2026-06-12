@@ -7,13 +7,20 @@ fi
 
 {% set skip_flag = "-k" if module.continue_downloads else "" %}
 
+# We have to skip the mount check because it's hardcoded to look
+# in /mnt/data/sword even though we can change it in the args.
+# We change it in the args here to match the other modules 
+# which makes forming the optional binds a lot easier.
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
-    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data \
+    --env SKIP_MOUNT_CHECK=true \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/input.sif \
     -v {{ sword_version }} \
-    -r /mnt/data/expanded_reaches_of_interest.json \
+    -r /mnt/data/input/expanded_reaches_of_interest.json \
+    -o /mnt/data/input/swot \
+    -s /mnt/data/input/sword \
     -c {{ module.collection }} \
     -t "{{ module.time_range }}" \
     -i ${idx} \

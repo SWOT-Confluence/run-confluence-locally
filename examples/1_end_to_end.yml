@@ -1,7 +1,7 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
-run_name: "end_to_end"
+run_name: "11_end_to_end"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
@@ -17,10 +17,10 @@ svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/valid
 # svs_repo_filename: "SVS_v1_0_1.nc"
 
 default_github_username: "SWOT-Confluence"
-default_repository_branch: "main" # Can also be per-module in `module_branches`
+default_repository_branch: "main" # Can also be per-module in `repo_branches`
 default_image_release_tag: 4.0.0
 
-clone_repos: False
+clone_repos: True
 build_modules: False
 submit_driver: False
 
@@ -41,14 +41,10 @@ modules_to_run:
   - "validation"
   - "output"
 
-modules_to_build:
-  - "setfinder"
-  - "busboi"
-
-module_branches:
+repo_branches:
   setfinder: "tedlanghorst:main"
   busboi: "BUSBOI_main"
-
+  validation: "post_UAT"
 
 hpc:
   partition: "ceewater_cjgleason-cpu"
@@ -56,7 +52,7 @@ hpc:
   time: "1-00:00:00"
   batch_size: 1000
   concurrent_jobs: 400
-  reach_chunks: 1
+  reach_chunks: 20
 
 
 # Really a module argument but so many of them use it we spec it once.

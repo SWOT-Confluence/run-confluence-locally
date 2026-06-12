@@ -5,18 +5,9 @@ run_name: "partial_run"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
-swot_input_bind_dir: "/nas/cee-ice/data/Confluence_Runs/global_vD/global_vD_mnt/input/swot"
-
-priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
-# priors_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
-# priors_zenodo_doi: "10.5281/zenodo.20541765"
-
-sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
-# sword_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
-# sword_zenodo_doi: "10.5281/zenodo.15299138"
-
-svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/validation"
-# svs_repo_filename: "SVS_v1_0_1.nc"
+priors_zenodo_doi: "10.5281/zenodo.20541765"
+sword_zenodo_doi: "10.5281/zenodo.15299138"
+svs_repo_filename: "SVS_v1_0_1.nc"
 
 default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `repo_branches`
@@ -29,25 +20,23 @@ submit_driver: True
 modules_to_run:
   - "expanded_setfinder"
   - "expanded_combine_data"
-  # - "input"
+  - "input"
   - "non_expanded_setfinder"
   - "non_expanded_combine_data"
-  # - "prediagnostics"
-  # - "metroman"
-  # - "metroman_consolidation"
+  - "prediagnostics"
+  - "metroman"
+  - "metroman_consolidation"
   - "unconstrained_momma"
-  # - "busboi"
-  # - "hivdi"
-  # - "sic4dvar"
+  - "busboi"
+  - "hivdi"
+  - "sic4dvar"
   - "consensus"
   - "validation"
   - "output"
 
 repo_branches:
   setfinder: "tedlanghorst:main"
-  momma: "tedlanghorst:dev"
   validation: "post_UAT"
-
 
 hpc:
   partition: "ceewater_cjgleason-cpu"
@@ -56,7 +45,6 @@ hpc:
   batch_size: 1000
   concurrent_jobs: 400
   reach_chunks: 20
-
 
 # Really a module argument but so many of them use it we spec it once.
 # Must always be the same for each module too.

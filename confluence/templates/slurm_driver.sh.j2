@@ -30,7 +30,8 @@ max_reaches={{ max_reaches | default(0) }}
 batch_size={{ hpc.batch_size }}
 concurrent_jobs={{ hpc.concurrent_jobs }}
 
-# Map specific script names to their job index arrays
+# Map specific modules to their pre-calculated job counts. Other modules
+# will determine the number of jobs based on the length of the reach file.
 declare -A script_arrays=(
 {% for script, arr in script_arrays.items() %}
     [{{ script }}]="{{ arr }}"

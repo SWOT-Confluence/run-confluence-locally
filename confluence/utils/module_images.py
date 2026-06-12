@@ -29,6 +29,7 @@ def _clone_worker(
     branch = branch_map.get(name, default_branch)
     path = repo_dir / name
     repo_name = get_repo_name(name)
+    log_file_path = log_dir / f"{name}_clone.log"
 
     if ":" in branch:
         custom_org, actual_branch = branch.split(":", 1)
@@ -42,7 +43,7 @@ def _clone_worker(
         shutil.rmtree(path)
 
     cmd = ["git", "clone", "--branch", branch_name, url, name]
-    log_file_path = log_dir / f"{name}_clone.log"
+    print("Clone command: " + " ".join(cmd))
 
     with open(log_file_path, "w") as log_file:
         result = sp.run(cmd, cwd=repo_dir, stdout=log_file, stderr=sp.STDOUT)
@@ -88,7 +89,6 @@ def clone_repos(
             name = futures[future]
             try:
                 _, log_path = future.result()
-                print(f"[{name}] Complete")
             except Exception as e:
                 print(f"[{name}]. Check {log_dir}. \nException: {e}")
 
@@ -372,14 +372,14 @@ def check_needed_images(image_dir: Path, modules: list[str]):
     if missing_images:
         raise RuntimeError(
             f"Images not found for modules ({missing_images}). This will occur if you did not specify "
-            + "all modules without images in the config arg `modules_to_build`. Either remove this argument "
+            + "all modules without images in the config arg `repos_to_build`. Either remove this argument "
             + "entirely to build all modules or include these missing modules."
         )
 
 
 def setup_modules(cfg: Config):
     # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder)
-    to_build = cfg.modules_to_build if cfg.modules_to_build else cfg.modules_to_run
+    to_build = cfg.repos_to_build if cfg.repos_to_build else cfg.modules_to_run
 
     to_build = set([strip_modifiers(module) for module in to_build])
 
@@ -389,7 +389,7 @@ def setup_modules(cfg: Config):
             to_build,
             cfg.default_github_username,
             cfg.default_repository_branch,
-            cfg.module_branches,
+            cfg.repo_branches,
             cfg.dirs["run"] / "modules",
         )
     else:

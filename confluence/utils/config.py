@@ -91,8 +91,8 @@ class Config(BaseModel):
     submit_driver: bool
 
     modules_to_run: list[str]
-    modules_to_build: list[str] = Field(default_factory=list)
-    module_branches: dict[str, str] = Field(default_factory=dict)
+    repos_to_build: list[str] = Field(default_factory=list)
+    repo_branches: dict[str, str] = Field(default_factory=dict)
 
     hpc: HPC = Field(default_factory=HPC)
     module_templates: dict[str, ModuleTemplate]

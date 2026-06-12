@@ -8,22 +8,24 @@ from confluence.utils.module_names import get_repo_name
 
 TEMPLATES_PATH = resources.files("confluence.templates")
 
-# Define which modules have special job counts.
-# These run 1 job per SWORD continent file.
-CONTINENT_MODULES = [
-    "expanded_setfinder",
-    "non_expanded_setfinder",
-    "unconstrained_priors",
-    "constrained_priors",
-    "metroman_consolidation",
-    "output",
-]
+# Most modules run per reach, but these modules run at continent or global scale.
 # These always run just once.
 GLOBAL_MODULES = [
     "expanded_combine_data",
     "non_expanded_combine_data",
     "lakeflow_input",
 ]
+# After non_expanded_combine_data runs, the continent.json file is reduced
+# to only those that are needed. At this point, we will not keep the original
+# indices of the continents, but just run the full length of the continent file.
+CONTINENT_MODULES = {
+    "expanded_setfinder": "position",
+    "non_expanded_setfinder": "position",
+    "unconstrained_priors": "count",
+    "constrained_priors": "count",
+    "metroman_consolidation": "count",
+    "output": "count",
+}
 
 
 def _get_platform_dict(platform: str):
@@ -58,29 +60,25 @@ def _get_continent_indices(cfg) -> str:
             active_indices.append(str(i))
             conts_to_run.append(list(cont.keys())[0])
 
-    if active_indices:
-        print(f"Per-continent modules will run on {conts_to_run}.")
-        return ",".join(active_indices)
-    else:
+    if not active_indices:
         raise RuntimeError("Could not resolve continents to run on from reaches_of_interest.json")
+
+    print(f"Per-continent modules will run on {conts_to_run}.")
+    positional_ids = ",".join(active_indices)
+    count_ids = ",".join(str(i) for i in range(len(active_indices)))
+    continent_module_values = {
+        module: positional_ids if value == "position" else count_ids for module, value in CONTINENT_MODULES.items()
+    }
+    return continent_module_values
 
 
 def _get_optional_binds(cfg: Config, bind_cmd: str):
-    # Some modules look in different places for input data so we just set up two binds here instead
-    # of making module-specific binds. The other way to do it would be to pass each source path
-    # into each module template and define where they look for each data source data. This is maybe
-    # lazy but easier than maintaining each module's binds. Lazy by definition actually- but I don't
-    # see any major downsides or conflicts arising.
     binds = []
     if cfg.swot_input_bind_dir:
         binds.append(f"{bind_cmd} {cfg.swot_input_bind_dir}:/mnt/data/input/swot:ro")
     if cfg.priors_bind_dir:
-        binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/data/sos:ro")
-        binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/sos:ro")
         binds.append(f"{bind_cmd} {cfg.priors_bind_dir}:/mnt/data/input/sos:ro")
     if cfg.sword_bind_dir:
-        binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/data/sword:ro")
-        binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/sword:ro")
         binds.append(f"{bind_cmd} {cfg.sword_bind_dir}:/mnt/data/input/sword:ro")
     return binds
 
@@ -139,7 +137,7 @@ def create_slurm_driver(cfg: Config):
     # build scripts list in order of modules_to_run list
     scripts = [f"{module}.sh" for module in cfg.modules_to_run]
 
-    continent_indices_str = _get_continent_indices(cfg)
+    continent_indices_dict = _get_continent_indices(cfg)
 
     # build script_jobs dict that includes counts for hardcoded modules.
     script_arrays = {}
@@ -147,7 +145,7 @@ def create_slurm_driver(cfg: Config):
         script_name = f"{module}.sh"
 
         if module in CONTINENT_MODULES:
-            script_arrays[script_name] = continent_indices_str
+            script_arrays[script_name] = continent_indices_dict[module]
         elif module in GLOBAL_MODULES:
             script_arrays[script_name] = "0"
 
