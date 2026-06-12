@@ -5,15 +5,8 @@ run_name: "end_to_end"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
-# priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
-# priors_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
 priors_zenodo_doi: "10.5281/zenodo.20541765"
-
-# sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
-# sword_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sword"
 sword_zenodo_doi: "10.5281/zenodo.15299138"
-
-# svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/validation"
 svs_repo_filename: "SVS_v1_0_1.nc"
 
 default_github_username: "SWOT-Confluence"

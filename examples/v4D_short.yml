@@ -1,7 +1,7 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
-run_name: "svs_test"
+run_name: "v4D_short"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
@@ -22,12 +22,9 @@ default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `repo_branches`
 default_image_release_tag: 4.0.0
 
-# Good for testing but this is dangerous for experiments if you forget to change `root_dir` and or `run_name`.
-overwrite_run: False
-
 clone_repos: True
 build_modules: True
-submit_driver: False
+submit_driver: True
 
 # This limits the number of jobs that the slurm driver will create for the per-reach jobs.
 # Useful for testing things without modifying your roi_file. 
@@ -41,11 +38,11 @@ modules_to_run:
   - "non_expanded_combine_data"
   - "prediagnostics"
   # # # # - "priors"
-  # - "metroman"
-  # - "metroman_consolidation"
+  - "metroman"
+  - "metroman_consolidation"
   - "unconstrained_momma"
-  # - "busboi"
-  # - "hivdi"
+  - "busboi"
+  - "hivdi"
   # - "sic4dvar"
   - "consensus"
   # # # # - "moi"
@@ -74,11 +71,8 @@ modules_to_run:
 repo_branches:
   setfinder: "tedlanghorst:main"
   busboi: "BUSBOI_main"
-  momma: "post_UAT"
-  sic4dvar: "tedlanghorst:main"
   validation: "post_UAT"
   
-
 hpc:
   # partition: "ceewater_cjgleason-cpu"
   partition: "cpu-preempt"
@@ -86,13 +80,11 @@ hpc:
   time: "1-00:00:00"
   batch_size: 1000
   concurrent_jobs: 400
-  reach_chunks: 1
-
+  reach_chunks: 20
 
 # Really a module argument but so many of them use it we spec it once.
 # Must always be the same for each module too.
 sword_version: "17"
-
 
 module_templates:
   expanded_setfinder:
@@ -214,4 +206,4 @@ module_templates:
     mem: "8G"
     j2_file: "modules/output.sh.j2"
     module_args: 
-      groups: "input momma metroman sic4dvar hivdi busboi consensus swot validation"
+      groups: "input prediagnostics momma metroman sic4dvar hivdi busboi consensus swot validation"
