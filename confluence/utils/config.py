@@ -6,9 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    field_validator,
     model_validator,
-    ValidationError
 )
 from pydantic.types import DirectoryPath, FilePath
 
@@ -42,17 +40,17 @@ class Config(BaseModel):
 
         ext = file_path.suffix.lower()
         if ext in [".yml", ".yaml"]:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 cfg_dict = yaml.safe_load(f)
         else:
-            raise ValueError(f"config file must have a .yml or .yaml extension")
+            raise ValueError("config file must have a .yml or .yaml extension")
 
         return cls(**cfg_dict)
 
     def to_file(self, out_path: Path | str):
-        out_path = self.dirs["run"] / "config.yml"
+        out_path = Path(out_path)
         with open(out_path, "w") as outfile:
-            yaml.dump(self.model_dump(), outfile)
+            yaml.dump(self.model_dump(mode="json"), outfile)
 
     def __str__(self) -> str:
         return self.model_dump_json(indent=4)
@@ -62,11 +60,15 @@ class Config(BaseModel):
     root_dir: Path
     run_name: str
     roi_file: FilePath  # must exist
-    sword_version: str
+    sword_version: Literal["16", "17"]
 
+    swot_input_bind_dir: DirectoryPath = None
+
+    priors_bind_dir: DirectoryPath = None
     priors_copy_dir: DirectoryPath = None
     priors_zenodo_doi: str = None
 
+    sword_bind_dir: DirectoryPath = None
     sword_copy_dir: DirectoryPath = None
     sword_zenodo_doi: str = None
 
@@ -78,16 +80,19 @@ class Config(BaseModel):
     default_image_release_tag: str
 
     max_reaches: int = Field(0, gte=0)
-    overwrite_run: bool
+    overwrite_run: bool = False
     clone_repos: bool
 
     build_modules: bool
-    container_platform: Literal["apptainer"] # TODO implement docker
+    # TODO implement docker
+    # The shell scripts allow Docker commands for run and bind based on this arg, but I haven't
+    # had implemented the build commands for docker yet.
+    container_platform: Literal["apptainer"] = "apptainer"
     submit_driver: bool
 
     modules_to_run: list[str]
-
-    module_branches: dict[str, str] = Field(default_factory=dict)
+    repos_to_build: list[str] = Field(default_factory=list)
+    repo_branches: dict[str, str] = Field(default_factory=dict)
 
     hpc: HPC = Field(default_factory=HPC)
     module_templates: dict[str, ModuleTemplate]
@@ -95,24 +100,68 @@ class Config(BaseModel):
     # Will be populated during run setup.
     dirs: dict[str, Path] = Field(default_factory=dict)
 
-    # MODEL / AFTER
     @model_validator(mode="after")
     def validate_copy_xor_download(self):
+        # Only one of each element in the list here can logically be spec'd.
+        # We wouldn't bind the priors AND copy them into our mount, so we should throw a
+        # validation error and tell user to clarify in their config before running.
         exclusive_groups = [
-            ('priors_copy_dir', 'priors_zenodo_doi'),
-            ('sword_copy_dir', 'sword_zenodo_doi'),
-            ('svs_copy_dir', 'svs_repo_filename')
+            ("priors_bind_dir", "priors_copy_dir", "priors_zenodo_doi"),
+            ("sword_bind_dir", "sword_copy_dir", "sword_zenodo_doi"),
+            ("svs_copy_dir", "svs_repo_filename"),
         ]
 
         for attr_group in exclusive_groups:
+            no_data_flag = False
             values = [getattr(self, a) is not None for a in attr_group]
-            if sum(values)>1:
-                raise ValidationError(f"Only specify one of {attr_group} as have conflicting sources for the data.")
-            if sum(values)==0:
-                raise ValidationError(f"Specify one of the following fields: {attr_group} to identify where to fetch data.")
-            
+            if sum(values) > 1:
+                raise ValueError(f"Only specify one of {attr_group} as have conflicting sources for the data.")
+            if sum(values) == 0:
+                print(
+                    f"None of {attr_group} was specified so the data will not be "
+                    + "bound, copied, or mounted into the input directory."
+                )
+                no_data_flag = True
+
+        if no_data_flag:
+            print("This is not an issue if these data already exist in the input dir, otherwise the job will fail.")
+
         return self
-    
+
+    @model_validator(mode="after")
+    def validate_swot_input_binding(self):
+        # Binding the swot files will only work if you are not running `input` and `prediagnostics` modules.
+        # Input will not work because the /mnt/input/sword dir will not be writable under this bind, and
+        binds_input = self.swot_input_bind_dir is not None
+        runs_input = bool({"input", "prediagnostics"} & set(self.modules_to_run))
+
+        if binds_input and runs_input:
+            raise ValueError(
+                "Binding the input SWOT files will only work if you are skipping 'input' and 'prediagnostics' modules. "
+                + "The directory will bind as read only so these modules will not be able to "
+                + "write (input) or modify (prediagnostics) the files."
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_filesystem_binds(self):
+        bind_paths = [
+            "swot_input_bind_dir",
+            "priors_bind_dir",
+            "sword_bind_dir",
+        ]
+
+        root_fs = Path(self.root_dir).parts[1]
+        offending = [
+            bp for bp in bind_paths if getattr(self, bp) is not None and Path(getattr(self, bp)).parts[1] != root_fs
+        ]
+
+        if offending:
+            raise ValueError(f"{offending} bind paths are not on the same filesystem as the root_dir.")
+
+        return self
+
     @model_validator(mode="after")
     def validate_module_spec(self):
         to_run = set(self.modules_to_run)
@@ -120,6 +169,6 @@ class Config(BaseModel):
 
         missing_templates = to_run - templates
         if missing_templates:
-            raise ValidationError(f"missing templates for modules that were set to run: {missing_templates = }.")
-        
+            raise ValueError(f"missing templates for modules that were set to run: {missing_templates = }.")
+
         return self

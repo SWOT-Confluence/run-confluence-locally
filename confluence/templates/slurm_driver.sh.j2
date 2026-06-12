@@ -17,11 +17,11 @@ directory="{{ dirs['run'] }}"
 
 # Parameters
 index_range={{ hpc.reach_chunks }}
-json_file="{{ dirs["mnt"] / "input" }}/reaches_of_interest.json"
-expanded_json_file="{{ dirs["mnt"] / "input" }}/expanded_reaches_of_interest.json"
-reach_json_file="{{ dirs["mnt"] / "input" }}/reaches.json"
-basin_json_file="{{ dirs["mnt"] / "input" }}/basin.json"
-metroman_json_file="{{ dirs["mnt"] / "input" }}/metrosets.json"
+json_file="{{ dirs["mnt"] }}/input/reaches_of_interest.json"
+expanded_json_file="{{ dirs["mnt"] }}/input/expanded_reaches_of_interest.json"
+reach_json_file="{{ dirs["mnt"] }}/input/reaches.json"
+basin_json_file="{{ dirs["mnt"] }}/input/basin.json"
+metroman_json_file="{{ dirs["mnt"] }}/input/metrosets.json"
 
 default_jobs=$(jq length "$json_file")
 max_reaches={{ max_reaches | default(0) }}
@@ -30,10 +30,11 @@ max_reaches={{ max_reaches | default(0) }}
 batch_size={{ hpc.batch_size }}
 concurrent_jobs={{ hpc.concurrent_jobs }}
 
-# Map specific script names to their job counts
-declare -A script_jobs=(
-{% for script, jobs in script_jobs.items() %}
-    [{{ script }}]={{ jobs }}
+# Map specific modules to their pre-calculated job counts. Other modules
+# will determine the number of jobs based on the length of the reach file.
+declare -A script_arrays=(
+{% for script, arr in script_arrays.items() %}
+    [{{ script }}]="{{ arr }}"
 {% endfor %}
 )
 
@@ -47,9 +48,44 @@ for slurm_script in "${scripts[@]}"; do
     echo "Starting submission for: $slurm_script"
     date
 
-    num_jobs="${script_jobs[$slurm_script]}"
+    # ---------------------------------------------------------
+    # BRANCH 1: Fixed Array Execution (Continents / Globals)
+    # ---------------------------------------------------------
+    if [[ -v script_arrays["$slurm_script"] ]]; then
+        slurm_array="${script_arrays[$slurm_script]}"
+        echo "Submitting sparse array job for $slurm_script with array $slurm_array"
 
-    # Dynamic job count updates
+        job_id=$(sbatch --export=OFFSET=0,INDEX_RANGE=1,MAX_LIMIT=6 \
+               --array=${slurm_array}%${concurrent_jobs} \
+               {{ dirs["sh_scripts"] }}"/${slurm_script}")
+        
+        job_id_number=$(echo "$job_id" | awk '{print $4}')
+
+        echo "Waiting for sparse job array $job_id_number to finish..."
+
+        while squeue -j "$job_id_number" 2>/dev/null | grep -q "$job_id_number"; do
+            job_info=$(squeue -j "${job_id_number}[]" --noheader -o "%i %T %R")
+            held_tasks=$(echo "$job_info" | grep -i "requeued held" | awk '{print $1}')
+
+            if [[ -n "$held_tasks" ]]; then
+                echo "Detected held tasks in array $job_id_number:"
+                echo "$held_tasks"
+                for task in $held_tasks; do
+                    echo "Cancelling task $task..."
+                    scancel "$task"
+                done
+            fi
+            sleep 10
+        done
+
+        echo "Array $job_id_number has finished."
+        date
+        continue
+    fi
+
+    # ---------------------------------------------------------
+    # BRANCH 2: Reach-Ranged Array Job Execution
+    # ---------------------------------------------------------
     if [[ -s "$expanded_json_file" && "$slurm_script" == "input.sh" ]]; then
         num_jobs=$(jq length "$expanded_json_file")
     fi
@@ -77,29 +113,15 @@ for slurm_script in "${scripts[@]}"; do
         continue
     fi
 
-    if [[ ! -v script_jobs["$slurm_script"] ]]; then
-        if [[ {{ max_reaches | default(0) }} -ne 0 && "$num_jobs" -gt {{ max_reaches | default(0) }} ]]; then
-            echo "Limiting job count for $slurm_script from $num_jobs to {{ max_reaches | default(0) }} (test mode)"
-            num_jobs={{ max_reaches | default(0) }}
-        fi
+    if [[ {{ max_reaches | default(0) }} -ne 0 && "$num_jobs" -gt {{ max_reaches | default(0) }} ]]; then
+        echo "Limiting job count for $slurm_script from $num_jobs to {{ max_reaches | default(0) }} (test mode)"
+        num_jobs={{ max_reaches | default(0) }}
     fi
 
     start=0
     while [ $start -lt $num_jobs ]; do
-        script_base="${slurm_script%.sh}"
-
-        # If the script has an explicitly defined job count in script_jobs,
-        # treat it as a fixed-count module (non-ranged).
-        # Otherwise assume it operates on reach ranges.
-        if [[ -v script_jobs["$slurm_script"] ]]; then
-            # Fixed-count module
-            current_range=1
-            target_reaches_per_batch=$batch_size
-        else
-            # Reach-ranged module
-            current_range=$index_range
-            target_reaches_per_batch=$(( batch_size * current_range ))
-        fi
+        current_range=$index_range
+        target_reaches_per_batch=$(( batch_size * current_range ))
 
         reaches_remaining=$(( num_jobs - start ))
         if [ $reaches_remaining -gt $target_reaches_per_batch ]; then
@@ -114,12 +136,11 @@ for slurm_script in "${scripts[@]}"; do
 
         echo "Submitting $num_tasks tasks (Step: $current_range) for reaches $start to $logical_end"
         
-
         job_id=$(sbatch --export=OFFSET=${start},INDEX_RANGE=${current_range},MAX_LIMIT=${num_jobs} \
                --array=0-${last_task_index}%${concurrent_jobs} \
                {{ dirs["sh_scripts"] }}"/${slurm_script}")
         
-        job_id_number=$(echo $job_id | awk '{print $4}')
+        job_id_number=$(echo "$job_id" | awk '{print $4}')
 
         echo "Waiting for job array $job_id_number to finish..."
 
@@ -135,7 +156,6 @@ for slurm_script in "${scripts[@]}"; do
                     scancel "$task"
                 done
             fi
-
             sleep 10
         done
 
@@ -152,6 +172,5 @@ for slurm_script in "${scripts[@]}"; do
         sleep 1
     done      
 done
-
 
 echo "Run $run has finished successfully."

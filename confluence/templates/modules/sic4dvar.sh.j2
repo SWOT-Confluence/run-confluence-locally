@@ -6,11 +6,14 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_commands.run }} run \
-    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
-    {{ container_commands.bind }} {{ mnt_dir }}/flpe/sic4dvar:/mnt/data/output \
-    {{ container_commands.bind }} {{ mnt_dir }}/logs:/mnt/data/logs \
+  {{ container_cmd.run }} run \
+    {{ container_cmd.bind }} {{ module_dir }}/sic4dvar_param_confluence.ini:/app/sic4dvar_param_confluence.ini \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_cmd.bind }} {{ mnt_dir }}/flpe/sic4dvar:/mnt/data/output \
+    {{ container_cmd.bind }} {{ mnt_dir }}/logs:/mnt/data/logs \
+    {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/sic4dvar.sif \
     -r reaches.json \
+    --config_file_path /app/sic4dvar_param_confluence.ini \
     --index ${idx}
 done

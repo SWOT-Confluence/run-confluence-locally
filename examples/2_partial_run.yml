@@ -1,11 +1,11 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
-run_name: "end_to_end"
+run_name: "partial_run"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
-# swot_input_bind_dir: "/nas/cee-ice/data/Confluence_Runs/global_vD/global_vD_mnt/input/swot"
+swot_input_bind_dir: "/nas/cee-ice/data/Confluence_Runs/global_vD/global_vD_mnt/input/swot"
 
 priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
 # priors_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/_empty_v4/empty_mnt/input/sos"
@@ -22,71 +22,40 @@ default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `repo_branches`
 default_image_release_tag: 4.0.0
 
-# Good for testing but this is dangerous for experiments if you forget to change `root_dir` and or `run_name`.
-overwrite_run: False
-
-clone_repos: False
-build_modules: False
-submit_driver: False
-
-# This limits the number of jobs that the slurm driver will create for the per-reach jobs.
-# Useful for testing things without modifying your roi_file. 
-# max_reaches: 10
+clone_repos: True
+build_modules: True
+submit_driver: True
 
 modules_to_run:
   - "expanded_setfinder"
   - "expanded_combine_data"
-  - "input"
+  # - "input"
   - "non_expanded_setfinder"
   - "non_expanded_combine_data"
-  - "prediagnostics"
-  # # # # - "priors"
-  - "metroman"
-  - "metroman_consolidation"
+  # - "prediagnostics"
+  # - "metroman"
+  # - "metroman_consolidation"
   - "unconstrained_momma"
-  - "busboi"
-  - "hivdi"
+  # - "busboi"
+  # - "hivdi"
   # - "sic4dvar"
   - "consensus"
-  # # # # - "moi"
   - "validation"
   - "output"
 
-
-# repos_to_build:
-#   - "setfinder"
-
-
-### 
-# advanced github
-###
-# You can optionally define specific branches for specific modules.
-# Default branch will be used for any that are not specified. 
-# Any branch can also define alternate owner of repo as "<owner>:<branch>"
-# Ex: 'tedlanghorst:main'
-#
-# repo_branches:
-#   setfinder: "main"
-#   combine_data: "tedlanghorst:dev"
-#   # etc... 
-####
-
 repo_branches:
   setfinder: "tedlanghorst:main"
-  busboi: "BUSBOI_main"
-  momma: "post_UAT"
-  sic4dvar: "tedlanghorst:main"
+  momma: "tedlanghorst:dev"
   validation: "post_UAT"
-  
+
 
 hpc:
-  # partition: "ceewater_cjgleason-cpu"
-  partition: "cpu-preempt"
+  partition: "ceewater_cjgleason-cpu"
   account: "pi_cjgleason_umass_edu"
   time: "1-00:00:00"
   batch_size: 1000
   concurrent_jobs: 400
-  reach_chunks: 1
+  reach_chunks: 20
 
 
 # Really a module argument but so many of them use it we spec it once.

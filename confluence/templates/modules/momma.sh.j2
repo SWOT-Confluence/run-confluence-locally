@@ -8,9 +8,10 @@ fi
 {% set constrained_flag = "-c" if module.constrained else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_commands.run }} run \
-    {{ container_commands.bind }} {{ mnt_dir }}/input:/mnt/data/input \
-    {{ container_commands.bind }} {{ mnt_dir }}/flpe/momma:/mnt/data/output \
+  {{ container_cmd.run }} run \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_cmd.bind }} {{ mnt_dir }}/flpe/momma:/mnt/data/output \
+    {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/momma.sif \
     -r reaches.json \
     -m {{ module.m_parameter}} \
