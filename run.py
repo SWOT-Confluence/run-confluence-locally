@@ -33,11 +33,11 @@ TITLE = """
 
 
 def main():
-    print(TITLE)
-
     parser = argparse.ArgumentParser()
     parser.add_argument("config_path")
     args = parser.parse_args()
+
+    print(TITLE)
 
     cfg = Config.from_file(args.config_path)
     cfg = setup_dirs(cfg)
