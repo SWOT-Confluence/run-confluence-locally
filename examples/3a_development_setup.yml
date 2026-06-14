@@ -171,4 +171,4 @@ module_templates:
     mem: "8G"
     j2_file: "modules/output.sh.j2"
     module_args: 
-      groups: "input prediagnostics momma metroman sic4dvar hivdi busboi consensus swot validation"
+      groups: "input momma metroman sic4dvar hivdi busboi consensus swot validation"

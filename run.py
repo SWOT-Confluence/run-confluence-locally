@@ -2,6 +2,7 @@ import argparse
 import subprocess as sp
 
 from confluence.utils.config import Config
+from confluence.utils.title import print_title
 from confluence.utils.dir_structure import setup_dirs
 from confluence.utils.module_images import setup_modules
 from confluence.utils.scripts import write_scripts
@@ -13,31 +14,12 @@ TODO
     - check for anything referencing notebook based code
 """
 
-
-TITLE = """
- ██████╗ ██████╗ ███╗   ██╗███████╗██╗     ██╗   ██╗███████╗███╗   ██╗ ██████╗███████╗
-██╔════╝██╔═══██╗████╗  ██║██╔════╝██║     ██║   ██║██╔════╝████╗  ██║██╔════╝██╔════╝
-██║     ██║   ██║██╔██╗ ██║█████╗  ██║     ██║   ██║█████╗  ██╔██╗ ██║██║     █████╗  
-██║     ██║   ██║██║╚██╗██║██╔══╝  ██║     ██║   ██║██╔══╝  ██║╚██╗██║██║     ██╔══╝  
-╚██████╗╚██████╔╝██║ ╚████║██║     ███████╗╚██████╔╝███████╗██║ ╚████║╚██████╗███████╗
- ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚══════╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚══════╝
-                                                                                      
- ██████╗ ███████╗███████╗██╗     ██╗███╗   ██╗███████╗                                
-██╔═══██╗██╔════╝██╔════╝██║     ██║████╗  ██║██╔════╝                                
-██║   ██║█████╗  █████╗  ██║     ██║██╔██╗ ██║█████╗                                  
-██║   ██║██╔══╝  ██╔══╝  ██║     ██║██║╚██╗██║██╔══╝                                  
-╚██████╔╝██║     ██║     ███████╗██║██║ ╚████║███████╗                                
- ╚═════╝ ╚═╝     ╚═╝     ╚══════╝╚═╝╚═╝  ╚═══╝╚══════╝                                
-
-"""
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config_path")
     args = parser.parse_args()
 
-    print(TITLE)
+    print_title()
 
     cfg = Config.from_file(args.config_path)
     cfg = setup_dirs(cfg)
