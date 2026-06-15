@@ -1,7 +1,8 @@
 import re
 import shutil
 import subprocess as sp
-import tempfile
+import tarfile
+import zipfile
 from importlib import resources
 from pathlib import Path
 
@@ -56,7 +57,7 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
     return dirs
 
 
-def strip_sword_version_letters(target_dir: Path, target_version: str):
+def _strip_sword_version_letters(target_dir: Path, target_version: str):
     # Group 1: prefix up to 'v'
     # Group 2: numeric version
     # [a-zA-Z]: exactly one alphabetical character (dropped from new name)
@@ -110,13 +111,18 @@ def _copy_or_download_sos(cfg: Config):
         )
         archives = list(sos_dir.glob("*.tar.gz"))
         if len(archives) > 1:
-            raise RuntimeError("More than 1 .tar.gz found for priors.")
+            raise RuntimeError("More than 1 .tar.gz found for SOS priors.")
         elif len(archives) == 0:
-            raise RuntimeError("No .tar.gz file found for priors.")
+            raise RuntimeError("No .tar.gz file found for SOS priors.")
         archive_path = archives[0]
 
-        cmd = ["tar", "--strip-components=1", "-xzf", str(archive_path), "-C", str(sos_dir)]
-        sp.run(cmd, check=True)
+        with tarfile.open(archive_path, "r:gz") as tar:
+            for member in tar.getmembers():
+                parts = Path(member.name).parts
+                # Bypass the root directory to extract directly into sos_dir
+                if len(parts) > 1:
+                    member.name = str(Path(*parts[1:]))
+                    tar.extract(member, path=sos_dir)
         archive_path.unlink()
 
     else:
@@ -125,7 +131,7 @@ def _copy_or_download_sos(cfg: Config):
         # )
         return
 
-    strip_sword_version_letters(sos_dir, cfg.sword_version)
+    _strip_sword_version_letters(sos_dir, cfg.sword_version)
 
 
 def _copy_or_download_sword(cfg: Config):
@@ -145,33 +151,27 @@ def _copy_or_download_sword(cfg: Config):
         )
         archives = list(sword_dir.glob("*_netcdf.zip"))
         if len(archives) > 1:
-            raise RuntimeError("More than 1 *_netcdf.zip found for priors.")
+            raise RuntimeError("More than 1 *_netcdf.zip found for SWORD.")
         elif len(archives) == 0:
-            raise RuntimeError("No *_netcdf.zip file found for priors.")
+            raise RuntimeError("No *_netcdf.zip file found for SWORD.")
         archive_path = archives[0]
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            sp.run(
-                ["unzip", "-q", str(archive_path), "-d", tmpdir],
-                check=True,
-            )
-
-            root_dir = next(Path(tmpdir).iterdir())
-
-            shutil.copytree(
-                root_dir,
-                sword_dir,
-                dirs_exist_ok=True,
-            )
-
+        with zipfile.ZipFile(archive_path, "r") as z:
+            for member in z.infolist():
+                parts = Path(member.filename).parts
+                # Bypass the root directory to extract directly into sword_dir
+                if len(parts) > 1:
+                    member.filename = str(Path(*parts[1:]))
+                    z.extract(member, path=sword_dir)
         archive_path.unlink()
+
     else:
         # print(
         #     f"Unspecified source of SOS data. This is ok if they already exist in {cfg.dirs['mnt'].stem}."
         # )
         return
 
-    strip_sword_version_letters(sword_dir, cfg.sword_version)
+    _strip_sword_version_letters(sword_dir, cfg.sword_version)
 
 
 def _copy_or_download_svs(cfg: Config):
