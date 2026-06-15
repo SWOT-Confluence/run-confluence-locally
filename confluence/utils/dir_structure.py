@@ -45,6 +45,7 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
         dir.mkdir(mode=755, parents=True, exist_ok=True)
     dirs["run"] = run_dir
     dirs["mnt"] = mnt_dir
+    dirs["input"] = mnt_dir / "input"
 
     for dir in mnt_dir_list:
         (mnt_dir / dir).mkdir(mode=755, parents=True, exist_ok=True)
@@ -80,17 +81,19 @@ def strip_sword_version_letters(target_dir: Path, target_version: str):
 def _copy_nc_files(source_dir: Path, target_dir: Path, expected_n: int):
     # Copy files if they were configd and exist
     source_files = list(Path(source_dir).glob("*.nc"))
+    copied_files = []
     if len(source_files) == expected_n:
         for file in source_files:
             print(f"Copying {file.name}")
             shutil.copy2(str(file), str(target_dir / file.name))
-        return
+            copied_files.append(str(target_dir / file.name))
+        return copied_files
     else:
         raise ValueError(f"Expected {expected_n} files in priors dir but found {len(source_files)}\n{source_files}")
 
 
 def _copy_or_download_sos(cfg: Config):
-    sos_dir = cfg.dirs["mnt"] / "input" / "sos"
+    sos_dir = cfg.dirs["input"] / "sos"
 
     if cfg.priors_bind_dir:
         print(f"SOS prior files will be bound from: {cfg.priors_bind_dir}")
@@ -125,7 +128,7 @@ def _copy_or_download_sos(cfg: Config):
 
 
 def _copy_or_download_sword(cfg: Config):
-    sword_dir = cfg.dirs["mnt"] / "input" / "sword"
+    sword_dir = cfg.dirs["input"] / "sword"
 
     if cfg.sword_bind_dir:
         print(f"SWORD files will be bound from: {cfg.sword_bind_dir}")
@@ -172,10 +175,11 @@ def _copy_or_download_sword(cfg: Config):
 
 def _copy_or_download_svs(cfg: Config):
     # svs file name does not include sword version number so renaming not needed.
-    svs_dir = cfg.dirs["mnt"] / "validation"
+    svs_dir = cfg.dirs["input"] / "svs"
 
     if cfg.svs_copy_dir is not None:
-        _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
+        copied_files = _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
+        return copied_files[0]
     elif cfg.svs_repo_filename is not None:
         target_version = cfg.svs_repo_filename
         dataset_doi = "doi:10.18419/DARUS-5843"
@@ -205,11 +209,17 @@ def _copy_or_download_svs(cfg: Config):
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
+
+        return str(svs_dir / cfg.svs_repo_filename)
     else:
-        # print(
-        #     f"Unspecified source of SVS data. This is ok if it already exists in {cfg.dirs['mnt'].stem}."
-        # )
-        return
+        # try to find the SVS file so that we can return path for validation module
+        svs_files = list((cfg.dirs["input"] / 'validation').glob('*SVS*.nc'))
+        if len(svs_file) == 0:
+            raise RuntimeError("Could not find the SVS file in the validation directory.")
+        elif len(svs_file) > 1: 
+            raise RuntimeError("Found multiple files matching *SVS*.nc name pattern in the validation directory.")
+        
+        return str(svs_files[0])
 
 
 def setup_dirs(cfg: Config):
@@ -238,7 +248,9 @@ def setup_dirs(cfg: Config):
 
     _copy_or_download_sos(cfg)
     _copy_or_download_sword(cfg)
-    _copy_or_download_svs(cfg)
+    svs_path = _copy_or_download_svs(cfg)
+
+    cfg.module_templates['validation']['module_args']['svs_file'] = svs_path
 
     out_path = run_dir / "config.yml"
     with open(out_path, "w") as outfile:

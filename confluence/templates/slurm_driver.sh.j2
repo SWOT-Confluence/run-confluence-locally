@@ -32,9 +32,9 @@ concurrent_jobs={{ hpc.concurrent_jobs }}
 
 # Map specific modules to their pre-calculated job counts. Other modules
 # will determine the number of jobs based on the length of the reach file.
-declare -A script_arrays=(
-{% for script, arr in script_arrays.items() %}
-    [{{ script }}]="{{ arr }}"
+declare -A module_counts=(
+{% for script, count in module_counts.items() %}
+    [{{ script }}]="{{ count }}"
 {% endfor %}
 )
 
@@ -51,17 +51,20 @@ for slurm_script in "${scripts[@]}"; do
     # ---------------------------------------------------------
     # BRANCH 1: Fixed Array Execution (Continents / Globals)
     # ---------------------------------------------------------
-    if [[ -v script_arrays["$slurm_script"] ]]; then
-        slurm_array="${script_arrays[$slurm_script]}"
-        echo "Submitting sparse array job for $slurm_script with array $slurm_array"
+    if [[ -v module_counts["$slurm_script"] ]]; then
+        count="${script_arrays[$slurm_script]}"
+        array_spec="0-$((count - 1))"
 
-        job_id=$(sbatch --export=OFFSET=0,INDEX_RANGE=1,MAX_LIMIT=6 \
-               --array=${slurm_array}%${concurrent_jobs} \
-               {{ dirs["sh_scripts"] }}"/${slurm_script}")
-        
+        echo "Submitting array job for $slurm_script with ${count} tasks (${array_spec})"
+
+        job_id=$(sbatch \
+            --export=OFFSET=0,INDEX_RANGE=1,MAX_LIMIT=6 \
+            --array=${array_spec}%${concurrent_jobs} \
+            {{ dirs["sh_scripts"] }}/${slurm_script})
+
         job_id_number=$(echo "$job_id" | awk '{print $4}')
 
-        echo "Waiting for sparse job array $job_id_number to finish..."
+        echo "Waiting for array $job_id_number to finish..."
 
         while squeue -j "$job_id_number" 2>/dev/null | grep -q "$job_id_number"; do
             job_info=$(squeue -j "${job_id_number}[]" --noheader -o "%i %T %R")
@@ -75,6 +78,7 @@ for slurm_script in "${scripts[@]}"; do
                     scancel "$task"
                 done
             fi
+
             sleep 10
         done
 

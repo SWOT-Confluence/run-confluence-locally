@@ -15,17 +15,14 @@ GLOBAL_MODULES = [
     "non_expanded_combine_data",
     "lakeflow_input",
 ]
-# After non_expanded_combine_data runs, the continent.json file is reduced
-# to only those that are needed. At this point, we will not keep the original
-# indices of the continents, but just run the full length of the continent file.
-CONTINENT_MODULES = {
-    "expanded_setfinder": "position",
-    "non_expanded_setfinder": "position",
-    "unconstrained_priors": "count",
-    "constrained_priors": "count",
-    "metroman_consolidation": "count",
-    "output": "count",
-}
+CONTINENT_MODULES = [
+    "expanded_setfinder",
+    "non_expanded_setfinder",
+    "unconstrained_priors",
+    "constrained_priors",
+    "metroman_consolidation",
+    "output",
+]
 
 
 def _get_platform_dict(platform: str):
@@ -39,37 +36,40 @@ def _get_platform_dict(platform: str):
     return {"run": platform, "bind": bind_cmd}
 
 
-def _get_continent_indices(cfg) -> str:
-    # Identifies the indices of continents that need to be run.
+def _overwrite_continent_file(cfg) -> str:
+    # After non_expanded_combine_data runs, the continent.json file is reduced
+    # to only those that are needed. To simplify things we will just do it ourselves before running.
+    # There are problems with intercontinental basins, but actually expanded_setfinder only
+    # runs with a single continent of SWORD data anyway so it was already a problem. 
+    # Maybe SWORD groups all basins into single continents? Probably.
 
-    reaches_path = cfg.dirs["mnt"] / "input" / "reaches_of_interest.json"
-    continents_path = cfg.dirs["mnt"] / "input" / "continent.json"
+    reaches_path = cfg.dirs["input"] / "reaches_of_interest.json"
+    continents_path = cfg.dirs["input"] / "continent.json"
 
     with open(reaches_path) as f:
         reaches = json.load(f)
     with open(continents_path) as f:
         continents = json.load(f)
 
+    # set of first digits of the reach_ids. These indicate continents
     active_prefixes = set(int(str(r)[0]) for r in reaches)
 
-    active_indices = []
+    filtered_continents = []
     conts_to_run = []
-    for i, cont in enumerate(continents):
+    for cont in continents:
         prefixes = list(cont.values())[0]
-        if any(p in active_prefixes for p in prefixes):
-            active_indices.append(str(i))
-            conts_to_run.append(list(cont.keys())[0])
 
-    if not active_indices:
-        raise RuntimeError("Could not resolve continents to run on from reaches_of_interest.json")
+        if any(p in active_prefixes for p in prefixes):
+            filtered_continents.append(cont)
+            conts_to_run.append(list(cont.keys())[0])
+    
+    # overwrite continent.json with only the needed continents
+    with open(continents_path, "w") as f:
+        json.dump(filtered_continents, f, indent=2)
 
     print(f"Per-continent modules will run on {conts_to_run}.")
-    positional_ids = ",".join(active_indices)
-    count_ids = ",".join(str(i) for i in range(len(active_indices)))
-    continent_module_values = {
-        module: positional_ids if value == "position" else count_ids for module, value in CONTINENT_MODULES.items()
-    }
-    return continent_module_values
+
+    return len(filtered_continents)
 
 
 def _get_optional_binds(cfg: Config, bind_cmd: str):
@@ -137,17 +137,14 @@ def create_slurm_driver(cfg: Config):
     # build scripts list in order of modules_to_run list
     scripts = [f"{module}.sh" for module in cfg.modules_to_run]
 
-    continent_indices_dict = _get_continent_indices(cfg)
+    n_continents = _overwrite_continent_file(cfg)
 
-    # build script_jobs dict that includes counts for hardcoded modules.
-    script_arrays = {}
-    for module in cfg.modules_to_run:
-        script_name = f"{module}.sh"
-
-        if module in CONTINENT_MODULES:
-            script_arrays[script_name] = continent_indices_dict[module]
-        elif module in GLOBAL_MODULES:
-            script_arrays[script_name] = "0"
+    # Unlisted scripts run based on length of their reach file. Done in the template.
+    # TODO would be easier to read if we did all module counts here instead of in the template.
+    script_counts = {
+        **{f"{module}.sh": n_continents for module in CONTINENT_MODULES},
+        **{f"{module}.sh": 1 for module in GLOBAL_MODULES},
+    }
 
     rendered_script = template.render(
         run_name=cfg.run_name,
@@ -155,7 +152,7 @@ def create_slurm_driver(cfg: Config):
         dirs=cfg.dirs,
         max_reaches=cfg.max_reaches,
         scripts=scripts,
-        script_arrays=script_arrays,
+        script_counts=script_counts,
     )
 
     out_path = cfg.dirs["sh_scripts"] / "slurm_driver.sh"

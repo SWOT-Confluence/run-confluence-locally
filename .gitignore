@@ -5,4 +5,7 @@
 __pycache__
 .ipynb_checkpoints
 
-examples/test.yml
+
+configs/*
+!configs/examples/
+!configs/examples/**
