@@ -140,8 +140,9 @@ def create_slurm_driver(cfg: Config):
     n_continents = _overwrite_continent_file(cfg)
 
     # Unlisted scripts run based on length of their reach file. Done in the template.
-    # TODO would be easier to read if we did all module counts here instead of in the template.
-    script_counts = {
+    # TODO would be easier to read if we did all module counts here instead of in the slurm template.
+    # This might also make it easier to implement the non-hpc version too.
+    module_counts = {
         **{f"{module}.sh": n_continents for module in CONTINENT_MODULES},
         **{f"{module}.sh": 1 for module in GLOBAL_MODULES},
     }
@@ -152,7 +153,7 @@ def create_slurm_driver(cfg: Config):
         dirs=cfg.dirs,
         max_reaches=cfg.max_reaches,
         scripts=scripts,
-        script_counts=script_counts,
+        module_counts=module_counts,
     )
 
     out_path = cfg.dirs["sh_scripts"] / "slurm_driver.sh"

@@ -32,6 +32,7 @@ def _create_directory_structure(run_dir: Path, mnt_dir: Path):
         "input/sos",
         "input/sword",
         "input/swot",
+        "input/svs",
         "logs",
         "moi",
         "offline",
@@ -86,7 +87,7 @@ def _copy_nc_files(source_dir: Path, target_dir: Path, expected_n: int):
         for file in source_files:
             print(f"Copying {file.name}")
             shutil.copy2(str(file), str(target_dir / file.name))
-            copied_files.append(str(target_dir / file.name))
+            copied_files.append(target_dir / file.name)
         return copied_files
     else:
         raise ValueError(f"Expected {expected_n} files in priors dir but found {len(source_files)}\n{source_files}")
@@ -210,16 +211,16 @@ def _copy_or_download_svs(cfg: Config):
                 if chunk:
                     f.write(chunk)
 
-        return str(svs_dir / cfg.svs_repo_filename)
+        return svs_dir / cfg.svs_repo_filename
     else:
         # try to find the SVS file so that we can return path for validation module
         svs_files = list((cfg.dirs["input"] / 'validation').glob('*SVS*.nc'))
-        if len(svs_file) == 0:
+        if len(svs_files) == 0:
             raise RuntimeError("Could not find the SVS file in the validation directory.")
-        elif len(svs_file) > 1: 
+        elif len(svs_files) > 1: 
             raise RuntimeError("Found multiple files matching *SVS*.nc name pattern in the validation directory.")
         
-        return str(svs_files[0])
+        return svs_files[0]
 
 
 def setup_dirs(cfg: Config):
@@ -250,7 +251,7 @@ def setup_dirs(cfg: Config):
     _copy_or_download_sword(cfg)
     svs_path = _copy_or_download_svs(cfg)
 
-    cfg.module_templates['validation']['module_args']['svs_file'] = svs_path
+    cfg.module_templates['validation'].module_args['svs_filename'] = str(svs_path.name)
 
     out_path = run_dir / "config.yml"
     with open(out_path, "w") as outfile:

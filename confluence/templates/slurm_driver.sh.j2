@@ -52,7 +52,7 @@ for slurm_script in "${scripts[@]}"; do
     # BRANCH 1: Fixed Array Execution (Continents / Globals)
     # ---------------------------------------------------------
     if [[ -v module_counts["$slurm_script"] ]]; then
-        count="${script_arrays[$slurm_script]}"
+        count="${module_counts[$slurm_script]}"
         array_spec="0-$((count - 1))"
 
         echo "Submitting array job for $slurm_script with ${count} tasks (${array_spec})"

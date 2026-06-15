@@ -5,6 +5,8 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
+{% set svs_opt = ("--svs_file /mnt/data/input/svs/" ~ module.svs_filename) if module.svs_filename else "" %}
+
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
@@ -16,7 +18,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ sif_dir }}/validation.sif \
     -r reaches.json \
     -t unconstrained \
-    --svs_file {{ module.svs_path }} \
+    {{ svs_opt }} \
     -i ${idx}
 
 done
