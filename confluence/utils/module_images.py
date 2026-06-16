@@ -367,40 +367,47 @@ def create_sifs(
                 print(f"[{mod_name}] Failed. See {log_dir}\nException: {e}")
 
 
-def check_needed_images(image_dir: Path, modules: list[str]):
-    missing_images = [mod for mod in modules if not (image_dir / f"{mod}.sif").is_file()]
-    if missing_images:
-        raise RuntimeError(
-            f"Images not found for modules ({missing_images}). This will occur if you did not specify "
-            + "all modules without images in the config arg `repos_to_build`. Either remove this argument "
-            + "entirely to build all modules or include these missing modules."
-        )
+def _get_modules_to_build(cfg: Config):
+    # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder)
+    modules = set([strip_modifiers(mod) for mod in cfg.modules_to_run])
+
+    if cfg.rebuild_all_modules:
+        return modules
+
+    images = cfg.dirs["sif"].glob("*.sif")
+    image_names = set([im.stem for im in images])
+    without_images = modules - image_names
+
+    if cfg.modules_to_rebuild:
+        return without_images.union(set(cfg.modules_to_rebuild))
+    else:
+        return without_images
+
 
 
 def setup_modules(cfg: Config):
-    # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder)
-    to_build = cfg.repos_to_build if cfg.repos_to_build else cfg.modules_to_run
-
-    to_build = set([strip_modifiers(module) for module in to_build])
+    modules_to_build = _get_modules_to_build(cfg)
 
     print("\n")
     if cfg.clone_repos:
         clone_repos(
-            to_build,
+            modules_to_build,
             cfg.default_github_username,
             cfg.default_repository_branch,
             cfg.repo_branches,
             cfg.dirs["run"] / "modules",
         )
     else:
-        print("Using existing repository files.")
+        existing_repos = {d for d in cfg.dirs['modules'].iterdir() if d.is_dir()}
+        missing_repos = modules_to_build - existing_repos
+        if missing_repos:
+            raise ValueError(f"Missing repositories for {missing_repos}. Set cfg.clone_repos = True to download.")
+        else:
+            print("Using existing repository files.")
 
     print("\n")
-    if cfg.build_modules:
-        create_defs(to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
-        create_sifs(to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"])
+    if modules_to_build:
+        create_defs(modules_to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
+        create_sifs(modules_to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"])
     else:
         print("Skipping module rebuild.")
-
-    to_run = set([strip_modifiers(module) for module in cfg.modules_to_run])
-    check_needed_images(cfg.dirs["sif"], to_run)

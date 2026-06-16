@@ -253,8 +253,6 @@ def setup_dirs(cfg: Config):
 
     cfg.module_templates['validation'].module_args['svs_filename'] = str(svs_path.name)
 
-    out_path = run_dir / "config.yml"
-    with open(out_path, "w") as outfile:
-        yaml.dump(cfg, outfile)
+    cfg.to_file(run_dir / "config.yml")
 
     return cfg

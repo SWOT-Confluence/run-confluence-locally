@@ -83,7 +83,6 @@ class Config(BaseModel):
     overwrite_run: bool = False
     clone_repos: bool
 
-    build_modules: bool
     # TODO implement docker
     # The shell scripts allow Docker commands for run and bind based on this arg, but I haven't
     # had implemented the build commands for docker yet.
@@ -91,7 +90,10 @@ class Config(BaseModel):
     submit_driver: bool
 
     modules_to_run: list[str]
-    repos_to_build: list[str] = Field(default_factory=list)
+
+    rebuild_all_modules: bool
+    modules_to_rebuild: list[str] = Field(default_factory=list)
+
     repo_branches: dict[str, str] = Field(default_factory=dict)
 
     hpc: HPC = Field(default_factory=HPC)
