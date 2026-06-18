@@ -60,7 +60,7 @@ def clone_repos(
     default_branch: str,
     branch_map: dict,
     repo_dir: str | Path,
-    max_workers: int = 4,
+    max_workers: int = None,
 ):
     repo_dir = _validate_dir(repo_dir)
     repo_dir.mkdir(parents=True, exist_ok=True)
@@ -314,7 +314,7 @@ def create_sifs(
     container_platform: str,
     sif_dir: str | Path,
     repo_dir: str | Path,
-    max_workers: int = 4,
+    max_workers: int = None,
 ):
     sif_dir = _validate_dir(sif_dir)
     repo_dir = _validate_dir(repo_dir)
@@ -365,6 +365,7 @@ def create_sifs(
                 print(f"[{mod_name}] Complete")
             except Exception as e:
                 print(f"[{mod_name}] Failed. See {log_dir}\nException: {e}")
+                raise e
 
 
 def _get_modules_to_build(cfg: Config):

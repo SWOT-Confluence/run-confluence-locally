@@ -1,7 +1,7 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
-run_name: "partial_run"
+run_name: "momma_dev"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 

@@ -1,3 +1,4 @@
+import sys
 import re
 import shutil
 import subprocess as sp
@@ -7,7 +8,6 @@ from importlib import resources
 from pathlib import Path
 
 import requests
-import yaml
 from zenodo_get import download as zenodo_download
 
 from confluence.utils.config import Config
@@ -214,7 +214,7 @@ def _copy_or_download_svs(cfg: Config):
         return svs_dir / cfg.svs_repo_filename
     else:
         # try to find the SVS file so that we can return path for validation module
-        svs_files = list((cfg.dirs["input"] / 'validation').glob('*SVS*.nc'))
+        svs_files = list((cfg.dirs["input"] / 'svs').glob('*SVS*.nc'))
         if len(svs_files) == 0:
             raise RuntimeError("Could not find the SVS file in the validation directory.")
         elif len(svs_files) > 1: 
@@ -228,6 +228,14 @@ def setup_dirs(cfg: Config):
     mnt_dir = run_dir / f"{cfg.run_name}_mnt"
 
     if cfg.overwrite_run and run_dir.is_dir():
+        response = input(
+            f"\n'{run_dir}' already exists and will be deleted. Continue? [y/N]: "
+        )
+
+        if response.lower() not in {"y", "yes"}:
+            print("Aborted.")
+            sys.exit(0)
+
         print("Removing existing directory before running")
         try:
             shutil.rmtree(run_dir)

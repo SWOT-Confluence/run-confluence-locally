@@ -5,7 +5,7 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
-{% set svs_opt = ("--svs_file /mnt/data/input/svs/" ~ module.svs_filename) if module.svs_filename else "" %}
+{% set svs_path = ("--svs_file /mnt/data/input/svs/" ~ module.svs_filename) if module.svs_filename else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
@@ -14,11 +14,13 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
     {{ container_cmd.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
     {{ container_cmd.bind }} {{ mnt_dir }}/validation:/mnt/data/output \
+    {{ container_cmd.bind }} {{ module_dir }}/reachids_svs_gages_used_to_train_v17.json:/mnt/data/input/exclude_gauges.json \
     {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/validation.sif \
     -r reaches.json \
     -t unconstrained \
-    {{ svs_opt }} \
+    {{ svs_path }} \
+    --exclude_gauges_file /mnt/data/input/exclude_gauges.json \
     -i ${idx}
 
 done

@@ -1,7 +1,7 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
 root_dir: "/nas/cee-water/cjgleason/ted/confluence/"
-run_name: "partial_run"
+run_name: "momma_dev"
 
 roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
@@ -14,7 +14,6 @@ default_repository_branch: "main" # Can also be per-module in `repo_branches`
 default_image_release_tag: 4.0.0
 
 clone_repos: True
-build_modules: True
 submit_driver: True
 
 modules_to_run:
@@ -23,13 +22,16 @@ modules_to_run:
   - "validation"
   - "output"
 
+
+rebuild_all_modules: True
+modules_to_rebuild:
+  - "unconstrained_momma"
+
 repo_branches:
   setfinder: "tedlanghorst:main"
   momma: "tedlanghorst:dev"
   validation: "post_UAT"
 
-repos_to_build:
-  - "momma"
 
 hpc:
   partition: "ceewater_cjgleason-cpu"
