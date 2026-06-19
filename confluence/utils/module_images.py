@@ -385,7 +385,6 @@ def _get_modules_to_build(cfg: Config):
         return without_images
 
 
-
 def setup_modules(cfg: Config):
     modules_to_build = _get_modules_to_build(cfg)
 
@@ -399,7 +398,7 @@ def setup_modules(cfg: Config):
             cfg.dirs["run"] / "modules",
         )
     else:
-        existing_repos = {d for d in cfg.dirs['modules'].iterdir() if d.is_dir()}
+        existing_repos = {d for d in cfg.dirs["modules"].iterdir() if d.is_dir()}
         missing_repos = modules_to_build - existing_repos
         if missing_repos:
             raise ValueError(f"Missing repositories for {missing_repos}. Set cfg.clone_repos = True to download.")

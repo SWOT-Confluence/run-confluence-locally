@@ -1,7 +1,7 @@
-import sys
 import re
 import shutil
 import subprocess as sp
+import sys
 import tarfile
 import zipfile
 from importlib import resources
@@ -214,12 +214,12 @@ def _copy_or_download_svs(cfg: Config):
         return svs_dir / cfg.svs_repo_filename
     else:
         # try to find the SVS file so that we can return path for validation module
-        svs_files = list((cfg.dirs["input"] / 'svs').glob('*SVS*.nc'))
+        svs_files = list((cfg.dirs["input"] / "svs").glob("*SVS*.nc"))
         if len(svs_files) == 0:
             raise RuntimeError("Could not find the SVS file in the validation directory.")
-        elif len(svs_files) > 1: 
+        elif len(svs_files) > 1:
             raise RuntimeError("Found multiple files matching *SVS*.nc name pattern in the validation directory.")
-        
+
         return svs_files[0]
 
 
@@ -228,9 +228,7 @@ def setup_dirs(cfg: Config):
     mnt_dir = run_dir / f"{cfg.run_name}_mnt"
 
     if cfg.overwrite_run and run_dir.is_dir():
-        response = input(
-            f"\n'{run_dir}' already exists and will be deleted. Continue? [y/N]: "
-        )
+        response = input(f"\n'{run_dir}' already exists and will be deleted. Continue? [y/N]: ")
 
         if response.lower() not in {"y", "yes"}:
             print("Aborted.")
@@ -259,7 +257,7 @@ def setup_dirs(cfg: Config):
     _copy_or_download_sword(cfg)
     svs_path = _copy_or_download_svs(cfg)
 
-    cfg.module_templates['validation'].module_args['svs_filename'] = str(svs_path.name)
+    cfg.module_templates["validation"].module_args["svs_filename"] = str(svs_path.name)
 
     cfg.to_file(run_dir / "config.yml")
 

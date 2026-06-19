@@ -13,8 +13,10 @@ default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `repo_branches`
 default_image_release_tag: 4.0.0
 
-clone_repos: True
 submit_driver: True
+
+clone_repos: True
+rebuild_all_modules: False
 
 modules_to_run:
   - "unconstrained_momma"
@@ -22,8 +24,6 @@ modules_to_run:
   - "validation"
   - "output"
 
-
-rebuild_all_modules: True
 modules_to_rebuild:
   - "unconstrained_momma"
 

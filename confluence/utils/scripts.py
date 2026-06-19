@@ -40,7 +40,7 @@ def _overwrite_continent_file(cfg) -> str:
     # After non_expanded_combine_data runs, the continent.json file is reduced
     # to only those that are needed. To simplify things we will just do it ourselves before running.
     # There are problems with intercontinental basins, but actually expanded_setfinder only
-    # runs with a single continent of SWORD data anyway so it was already a problem. 
+    # runs with a single continent of SWORD data anyway so it was already a problem.
     # Maybe SWORD groups all basins into single continents? Probably.
 
     reaches_path = cfg.dirs["input"] / "reaches_of_interest.json"
@@ -62,7 +62,7 @@ def _overwrite_continent_file(cfg) -> str:
         if any(p in active_prefixes for p in prefixes):
             filtered_continents.append(cont)
             conts_to_run.append(list(cont.keys())[0])
-    
+
     # overwrite continent.json with only the needed continents
     with open(continents_path, "w") as f:
         json.dump(filtered_continents, f, indent=2)

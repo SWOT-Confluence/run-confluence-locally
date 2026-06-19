@@ -1,6 +1,6 @@
 import random
 
-#fmt:off
+# fmt:off
 #ruff: noqa
 #type: ignore
 

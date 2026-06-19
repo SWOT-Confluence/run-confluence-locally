@@ -2,17 +2,17 @@ import argparse
 import subprocess as sp
 
 from confluence.utils.config import Config
-from confluence.utils.title import print_title
 from confluence.utils.dir_structure import setup_dirs
 from confluence.utils.module_images import setup_modules
 from confluence.utils.scripts import write_scripts
+from confluence.utils.title import print_title
 
 """
 TODO
-- args / entry points for continuing runs or reusing images
 - update readme
     - check for anything referencing notebook based code
 """
+
 
 def main():
     parser = argparse.ArgumentParser()
