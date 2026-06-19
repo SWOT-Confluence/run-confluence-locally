@@ -62,18 +62,18 @@ class Config(BaseModel):
     roi_file: FilePath  # must exist
     sword_version: Literal["16", "17"]
 
-    swot_input_bind_dir: DirectoryPath = None
+    swot_input_bind_dir: DirectoryPath | None = None
 
-    priors_bind_dir: DirectoryPath = None
-    priors_copy_dir: DirectoryPath = None
-    priors_zenodo_doi: str = None
+    priors_bind_dir: DirectoryPath | None = None
+    priors_copy_dir: DirectoryPath | None = None
+    priors_zenodo_doi: str | None = None
 
-    sword_bind_dir: DirectoryPath = None
-    sword_copy_dir: DirectoryPath = None
-    sword_zenodo_doi: str = None
+    sword_bind_dir: DirectoryPath | None = None
+    sword_copy_dir: DirectoryPath | None = None
+    sword_zenodo_doi: str | None = None
 
-    svs_copy_dir: DirectoryPath = None
-    svs_repo_filename: str = None
+    svs_copy_dir: DirectoryPath | None = None
+    svs_repo_filename: str | None = None
 
     default_github_username: str
     default_repository_branch: str
