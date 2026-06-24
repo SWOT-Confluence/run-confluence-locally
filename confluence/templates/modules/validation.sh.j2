@@ -6,7 +6,6 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 {% set svs_path = ("--svs_file /mnt/data/input/svs/" ~ module.svs_filename) if module.svs_filename else "" %}
-{% set reach_id_col = ( if module.svs_filename else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
