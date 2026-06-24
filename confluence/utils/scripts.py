@@ -105,7 +105,7 @@ def create_module_scripts(cfg: Config):
             optional_binds=optional_binds,
             mnt_dir=cfg.dirs["mnt"],
             sif_dir=cfg.dirs["sif"],
-            module_dir=cfg.dirs["modules"] / get_repo_name(module_name),
+            module_dir=cfg.dirs["modules"] / get_repo_name(module_name).lower(),
             sword_version=cfg.sword_version,
             module=template_args.module_args,
             run=cfg.run_name,

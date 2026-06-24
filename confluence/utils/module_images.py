@@ -192,26 +192,22 @@ def _build_def_file(
     def_content.extend(
         [
             "\n%post",
-            f'    echo "=== {log_name}: {len(override_files)} local files overridden ==="',
+            "    set -eu",
+            f'    echo "=== {log_name}: building image ==="',
         ]
     )
 
     if has_requirements:
         def_content.extend(
             [
-                f'    echo "=== {log_name}: reinstalling requirements.txt ==="',
-                "    if [ -f /app/requirements.txt ]; then",
-                "        /app/env/bin/python3 -m pip install --no-cache-dir -r /app/requirements.txt 2>/dev/null || \\",
-                "        python3 -m pip install --no-cache-dir -r /app/requirements.txt 2>/dev/null || \\",
-                f'        echo "WARNING: pip install failed for {log_name} — base image packages will be used"',
-                "    fi",
+                f'    echo "=== {log_name}: installing requirements ==="',
+                "    python3 -m pip install --no-cache-dir --break-system-packages -r /app/requirements.txt",
             ]
         )
 
     if is_output:
         def_content.extend(
             [
-                "    # Fix nested output directory",
                 "    if [ -d /app/output/output ]; then",
                 "        cp -rf /app/output/output/* /app/output/",
                 "        rm -rf /app/output/output",
@@ -219,12 +215,24 @@ def _build_def_file(
             ]
         )
 
+    def_content.append("\n%runscript")
     if entrypoint:
-        def_content.extend(["\n%runscript", f'    exec {entrypoint} "$@"'])
+        def_content.append(f'    exec {entrypoint} "$@"')
+    else:
+        def_content.append('    exec "$@"')
+
+    def_content.extend(
+        [
+            "\n%environment",
+            "    export PYTHONUNBUFFERED=1",
+        ]
+    )
 
     def_path = mod_dir / def_filename
     def_path.write_text("\n".join(def_content) + "\n")
+
     print(f"{log_name}: {def_filename} created ({len(override_files)} local files).")
+    return def_path
 
 
 def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
@@ -285,9 +293,9 @@ def _build_worker(
         case _:
             raise ValueError(f"{container_platform = } has not been implemented.")
 
-    # Isolate cache to prevent OCI pull race conditions during multithreading
     worker_cache_dir = repo_dir / ".apptainer_cache" / mod_name
     worker_cache_dir.mkdir(parents=True, exist_ok=True)
+
     env = os.environ.copy()
     env["APPTAINER_CACHEDIR"] = str(worker_cache_dir)
     env["SINGULARITY_CACHEDIR"] = str(worker_cache_dir)
@@ -299,12 +307,15 @@ def _build_worker(
             cmd,
             cwd=str(repo_dir / mod_name),
             stdout=log_file,
-            stderr=sp.STDOUT,  # Merges stderr into stdout
+            stderr=sp.STDOUT,
             env=env,
+            check=False,
         )
 
     if result.returncode != 0:
-        raise RuntimeError(f"Build failed with exit code {result.returncode}. See {log_file_path}")
+        print(f"\n  BUILD FAILED: {mod_name}")
+        print(f"   log: {log_file_path}")
+        raise RuntimeError(f"Build failed (exit={result.returncode})")
 
     return mod_name, log_file_path
 

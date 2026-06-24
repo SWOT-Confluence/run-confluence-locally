@@ -6,6 +6,7 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 {% set svs_path = ("--svs_file /mnt/data/input/svs/" ~ module.svs_filename) if module.svs_filename else "" %}
+{% set reach_id_col = ( if module.svs_filename else "" %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
   {{ container_cmd.run }} run \
@@ -21,6 +22,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     -t unconstrained \
     {{ svs_path }} \
     --exclude_gauges_file /mnt/data/input/exclude_gauges.json \
+    --svs_reach_id_col {{ module.reach_id_col | default("reach_id_v17b") }} \
     -i ${idx}
 
 done

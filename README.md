@@ -1,25 +1,29 @@
-siv4dvar is currently not working due to a bug with the module .ini config file. 
+# Setup
+1. Clone this repo on your HPC and navigate inside the directory. 
 
-# Install
-Create a python environment using uv. If you don't use uv already you may need to install it using ```pip install uv```
+2. Create a python environment using uv. If you don't use uv already you may need to install it using ```pip install uv``` before calling:
 ```bash
 uv sync
 ```
-
-
+3. Activate the uv environment:
+```bash
+source .venv/bin/activate
+```
 # Run
+The run.py script is intended to be able to do a full run of Confluence offline based on a single config file. In the next section are 3 common experimental scenarios and their relevant configuration options. In all cases, the way to run Confluence is to call:
+```bash
+python run.py <path/to/config.yml>
+```
+With the path to your configuration file as the only argument to the run.py script. The first thing that python will do is try to validate your config file against some basic rules... if any rules are broken it will throw an error into the console. 
 
-## Configuration & Experiment Scenarios
-The .yml configuration file controls the entire flow of a Confluence run. Below are 3 common experimental scenarios and their relevant configuration options. After that is a full listing of the config options. 
-
-### 1. Full end-to-end run
+## 1. Full end-to-end run
 **Goal:** Run the entire Confluence pipeline in a single call. 
 
 This configuration is aimed at getting as close as possible to reproducing the full 'online' versions of Confluence produced by PO.DAAC. This configuration will download the SWORD dataset, SOS priors, SVS validation file, and module code from their source repositories and download SWOT reach and node data via hydrocron. 
 
 See the 1_end_to_end.yml file in the examples directory for the full config. This file is set up to clone the repositories under the 'main' branch of the SWOT-Confluence Github account and run them as is. 
 
-### 2. Reusing data from a previous run.
+## 2. Reusing data from a previous run.
 **Goal:** Test Confluence without redownloading or duplicating input files. 
 
 On the UMass Unity HPC, this is particularly useful as we have run confluence through `prediagnostics` for all reaches in SWORD v17. This means we can just bind this directory to our new run and skip downloading. We can also bind the priors and SWORD datasets instead of downloading or copying. See the 2_partial_run.yml file in the examples directory for full config, but the most relevant section is:
@@ -33,7 +37,7 @@ These settings will alow us to reuse global download of SWOT data and the priors
 > **Note** this assumes the previous run contains all the reaches and the same prediagnostics filter that you need for your experiment. The SWOT data will be bound as 'read-only' and cannot be appended or modified. 
 
 
-### 3. Development and testing
+## 3. Development and testing
 **Goal:**  Iterate on module development while reusing data and module images.
 
 This is similar to example two, but notice there are two yml files in the example directory: `3a_development_setup` and `3b_development_iteration`. The 3a configuration file is similar to example 1 where we are running the entire flow as a baseline using the standard versions of the modules and downloading fresh data. After this run, the idea is that we will modify the source code of a module and test the impact of that change on the rest of Confluence. The 3b configuration file takes several time-saving shortcuts by relying on the 3a outputs of the run. There are several notable changes:

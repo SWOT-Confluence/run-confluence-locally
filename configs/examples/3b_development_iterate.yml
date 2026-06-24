@@ -31,6 +31,8 @@ repo_branches:
   setfinder: "tedlanghorst:main"
   momma: "tedlanghorst:dev"
   validation: "post_UAT"
+  consensus: "tedlanghorst:main"
+  output: "post_UAT"
 
 
 hpc:

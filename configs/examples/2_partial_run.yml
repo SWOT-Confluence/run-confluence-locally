@@ -39,8 +39,13 @@ modules_to_run:
 
 repo_branches:
   setfinder: "tedlanghorst:main"
-  momma: "tedlanghorst:dev"
+  busboi: "post_UAT"
+  momma: "post_UAT"
   validation: "post_UAT"
+  hivdi: "post_UAT"
+  sic4dvar: "post_UAT"
+  consensus: "tedlanghorst:main"
+  output: "post_UAT"
 
 
 hpc:

@@ -30,15 +30,19 @@ modules_to_run:
   - "unconstrained_momma"
   - "busboi"
   - "hivdi"
-  # - "sic4dvar"
+  - "sic4dvar"
   - "consensus"
   - "validation"
   - "output"
 
 repo_branches:
   setfinder: "tedlanghorst:main"
-  busboi: "BUSBOI_main"
+  busboi: "post_UAT"
+  momma: "post_UAT"
   validation: "post_UAT"
+  sic4dvar: "post_UAT"
+  consensus: "tedlanghorst:main"
+  output: "post_UAT"
 
 hpc:
   partition: "ceewater_cjgleason-cpu"
