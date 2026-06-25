@@ -2,26 +2,41 @@
 1. Clone this repo on your HPC and navigate inside the directory. 
 
 2. Create a python environment using uv. If you don't use uv already you may need to install it using ```pip install uv``` before calling:
-```bash
-uv sync
-```
+    ```bash
+    uv sync
+    ```
 3. Activate the uv environment:
-```bash
-source .venv/bin/activate
-```
+    ```bash
+    source .venv/bin/activate
+    ```
 # Run
 The run.py script is intended to be able to do a full run of Confluence offline based on a single config file. In the next section are 3 common experimental scenarios and their relevant configuration options. In all cases, the way to run Confluence is to call:
 ```bash
-python run.py <path/to/config.yml>
+python run.py </path/to/config.yml>
 ```
-With the path to your configuration file as the only argument to the run.py script. The first thing that python will do is try to validate your config file against some basic rules... if any rules are broken it will throw an error into the console. 
+With the path to your configuration file as the only argument to the run.py script. 
+
+The first thing that python will do is try to validate your config file against some basic rules... if any rules are broken it will throw an error into the console. One of those rules is that all path arguments in the config file must be **absolute** paths, meaning the have the entire path from the root of the file system and starts with a '/'. 
+
+
+## Cancelling a run
+Confluence is built to be pretty tolerant to individual failures, such that even when things are entirely broken, modules will continue to be submitted and failing. It's really important to monitor the status of the jobs and even check on the reports located in the run directory for problems. A single Confluence run can spawn thousands of slurm jobs and you want to avoid wasting time and compute resources. 
+
+When you submit a Confluence run, you'll see a message like this:
+```bash
+Submitted batch job <JOB_ID>
+```
+We call this job a 'slurm_driver' which coordinates all the modules into many individual slurm jobs. If you just cancelled this job, the current module would continue to run, potentially for many hours depending on the scale of your run. The script `kill_jobs.sh` will kill this slurm_driver script and all of the workers based on their naming convention. You can call it using:
+```bash
+bash kill_jobs.sh -j <JOB_ID>
+```
 
 ## 1. Full end-to-end run
 **Goal:** Run the entire Confluence pipeline in a single call. 
 
 This configuration is aimed at getting as close as possible to reproducing the full 'online' versions of Confluence produced by PO.DAAC. This configuration will download the SWORD dataset, SOS priors, SVS validation file, and module code from their source repositories and download SWOT reach and node data via hydrocron. 
 
-See the 1_end_to_end.yml file in the examples directory for the full config. This file is set up to clone the repositories under the 'main' branch of the SWOT-Confluence Github account and run them as is. 
+See the 1_end_to_end.yml file in the examples directory for the full config. 
 
 ## 2. Reusing data from a previous run.
 **Goal:** Test Confluence without redownloading or duplicating input files. 
@@ -29,9 +44,9 @@ See the 1_end_to_end.yml file in the examples directory for the full config. Thi
 On the UMass Unity HPC, this is particularly useful as we have run confluence through `prediagnostics` for all reaches in SWORD v17. This means we can just bind this directory to our new run and skip downloading. We can also bind the priors and SWORD datasets instead of downloading or copying. See the 2_partial_run.yml file in the examples directory for full config, but the most relevant section is:
 ```yml
 swot_input_bind_dir: "/nas/cee-ice/data/Confluence_Runs/global_vD/global_vD_mnt/input/swot"
-priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/end_to_end/end_to_end/input/sos"
-sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/end_to_end/end_to_end/input/sword"
-svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/end_to_end/end_to_end/validation"
+priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/C_vs_D/confluence_v4D/v4D_mnt/input/sos"
+sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/C_vs_D/confluence_v4D/v4D_mnt/input/sword"
+svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/C_vs_D/confluence_v4D/v4D_mnt/input/svs"
 ```
 These settings will alow us to reuse global download of SWOT data and the priors, SWORD, and SVS data from the previous end-to-end run. This saves ~10-300GB of disk storage per experiment depending on the scale of your testing. Even though you will not run the `input` module, you will still need to run the `setfinder` and `combine_data` modules to define the reach sets. These can be a subset of what is available in the `swot_input_bind_dir`.
 > **Note** this assumes the previous run contains all the reaches and the same prediagnostics filter that you need for your experiment. The SWOT data will be bound as 'read-only' and cannot be appended or modified. 
@@ -71,51 +86,46 @@ This is similar to example two, but notice there are two yml files in the exampl
       - "momma"
     ```
 
-
-
-
-
-
-
-
 You can run the 3b configuration multiple times after pushing new code to the `momma` repository. However, several of the intermediate outputs will be overwritten. The output files always have unique names and will not be overwritten, but you will need to keep track of the connections between specific module code versions and output files. 
 
 ### Configuration (`Config`)
+> **Disclaimer** this table was generated with AI based on the code from .confluence/utils/config.py. This python file is the actual source of the configuration requirements and is fairly readable if you run into any issues. 
+#### General Options
 
-| Option| Description |
-| --- | --- |
-| `root_dir` | Root directory for the pipeline. |
-| `run_name` | Identifier for the current run. |
-| `roi_file` | Path to the Region of Interest file. Must exist on the filesystem. |
-| `sword_version` | Explicit version of SWORD to use. Must be `"16"` or `"17"`. |
-| `swot_input_bind_dir` | Mount point for SWOT input files. **Constraint:** Must share the same filesystem root as `root_dir`. Cannot be used if `modules_to_run` includes `input` or `prediagnostics`. |
-| `priors_bind_dir` | Mount point for priors data. **Constraint:** Must share the same filesystem root as `root_dir`. Mutually exclusive with `priors_copy_dir` and `priors_zenodo_doi`. |
-| `priors_copy_dir` | Directory from which to copy priors data. **Constraint:** Mutually exclusive with `priors_bind_dir` and `priors_zenodo_doi`. |
-| `priors_zenodo_doi` | Zenodo DOI for downloading priors data. **Constraint:** Mutually exclusive with `priors_bind_dir` and `priors_copy_dir`. |
-| `sword_bind_dir` | Mount point for SWORD data. **Constraint:** Must share the same filesystem root as `root_dir`. Mutually exclusive with `sword_copy_dir` and `sword_zenodo_doi`. |
-| `sword_copy_dir` | Directory from which to copy SWORD data. **Constraint:** Mutually exclusive with `sword_bind_dir` and `sword_zenodo_doi`. |
-| `sword_zenodo_doi` | Zenodo DOI for downloading SWORD data. **Constraint:** Mutually exclusive with `sword_bind_dir` and `sword_copy_dir`. |
-| `svs_copy_dir` | Directory from which to copy SVS data. **Constraint:** Mutually exclusive with `svs_repo_filename`. |
-| `svs_repo_filename` | SVS repository filename to use. **Constraint:** Mutually exclusive with `svs_copy_dir`. |
-| `default_github_username` | Default username for cloning necessary GitHub repositories. |
-| `default_repository_branch` | Default branch to checkout upon cloning repositories. |
-| `default_image_release_tag` | Default container image tag to pull/use. |
-| `max_reaches` | Maximum number of reaches to process. Must be $\ge$ 0 (0 likely implies all). |
-| `overwrite_run` | If true, clears/overwrites an existing directory matching `run_name`. |
-| `clone_repos` | If true, initiates cloning of required source repositories. |
-| `build_modules` | If true, triggers the module build processes. |
-| `container_platform` | Container execution platform. Currently limited to `"apptainer"`. |
-| `submit_driver` | If true, submits the primary driver script to the job scheduler. |
-| `modules_to_run` | Array of module names scheduled for execution. **Constraint:** Each listed module must have a corresponding entry in `module_templates`. |
-| `repos_to_build` |  Array of module names designated for building. Defaults to an empty list. |
-| `repo_branches` |  Key-value pairs overriding the default repository branch for specific modules. Defaults to empty. |
-| `hpc` | HPC configuration parameters. See **HPC Options** below. |
-| `module_templates` | Mapping of module names to their execution templates. See **ModuleTemplate Options** below. |
-| `dirs` |  Internally populated dictionary of execution paths. Do not set manually; populated during setup. |
+| Option | Type | Description |
+| --- | --- | --- |
+| `root_dir` | Path | Root directory for the pipeline. **Constraint:** Must be an absolute path. |
+| `run_name` | String | Identifier for the current run. |
+| `roi_file` | FilePath | Path to the Region of Interest file. **Constraint:** Must exist on the filesystem and be an absolute path. |
+| `sword_version` | String | Explicit version of SWORD to use. Must be `"16"` or `"17"`. |
+| `swot_input_bind_dir` | DirectoryPath \| None | Mount point for SWOT input files. **Constraint:** Must be an absolute path, share the same filesystem root as `root_dir`, and cannot be used if `modules_to_run` includes `input` or `prediagnostics`. |
+| `priors_bind_dir` | DirectoryPath \| None | Mount point for priors data. **Constraint:** Must be an absolute path, share the same filesystem root as `root_dir`, and is mutually exclusive with `priors_copy_dir` and `priors_zenodo_doi`. |
+| `priors_copy_dir` | DirectoryPath \| None | Directory from which to copy priors data. **Constraint:** Must be an absolute path and is mutually exclusive with `priors_bind_dir` and `priors_zenodo_doi`. |
+| `priors_zenodo_doi` | String \| None | Zenodo DOI for downloading priors data. **Constraint:** Mutually exclusive with `priors_bind_dir` and `priors_copy_dir`. |
+| `sword_bind_dir` | DirectoryPath \| None | Mount point for SWORD data. **Constraint:** Must be an absolute path, share the same filesystem root as `root_dir`, and is mutually exclusive with `sword_copy_dir` and `sword_zenodo_doi`. |
+| `sword_copy_dir` | DirectoryPath \| None | Directory from which to copy SWORD data. **Constraint:** Must be an absolute path and is mutually exclusive with `sword_bind_dir` and `sword_zenodo_doi`. |
+| `sword_zenodo_doi` | String \| None | Zenodo DOI for downloading SWORD data. **Constraint:** Mutually exclusive with `sword_bind_dir` and `sword_copy_dir`. |
+| `svs_copy_dir` | DirectoryPath \| None | Directory from which to copy SVS data. **Constraint:** Must be an absolute path and is mutually exclusive with `svs_repo_filename`. |
+| `svs_repo_filename` | String \| None | SVS repository filename to use. **Constraint:** Mutually exclusive with `svs_copy_dir`. |
+| `default_github_username` | String | Default username for cloning necessary GitHub repositories. |
+| `default_repository_branch` | String | Default branch to checkout upon cloning repositories. |
+| `default_image_release_tag` | String | Default container image tag to pull/use. |
+| `max_reaches` | Integer | Maximum number of reaches to process. Must be >= 0. Defaults to 0. |
+| `overwrite_run` | Boolean | If true, clears/overwrites an existing directory matching `run_name`. Defaults to false. |
+| `clone_repos` | Boolean | If true, initiates cloning of required source repositories. |
+| `container_platform` | String | Container execution platform. Currently limited to `"apptainer"`. |
+| `submit_driver` | Boolean | If true, submits the primary driver script to the job scheduler. |
+| `modules_to_run` | List[String] | Array of module names scheduled for execution. **Constraint:** Each listed module must exist in `module_templates`. |
+| `rebuild_all_modules` | Boolean | If true, triggers the rebuild processes for all modules. |
+| `modules_to_rebuild` | List[String] | Array of specific module names designated for building/rebuilding. Defaults to empty. |
+| `repo_branches` | Dictionary | Key-value pairs overriding the default repository branch for specific modules. Defaults to empty. |
+| `hpc` | HPC Object | HPC configuration parameters. Defaults to an instantiated `HPC` model. |
+| `module_templates` | Dictionary | Mapping of module names to their execution templates (`ModuleTemplate`). |
+| `dirs` | Dictionary | Internally populated dictionary of execution paths. Do not set manually; populated during setup. |
 
 ---
 
-### HPC Options (`HPC`)
+#### HPC Options (`HPC`)
 
 | Option | Type | Description |
 | --- | --- | --- |
@@ -128,7 +138,7 @@ You can run the 3b configuration multiple times after pushing new code to the `m
 
 ---
 
-### Module Template Options (`ModuleTemplate`)
+#### Module Template Options (`ModuleTemplate`)
 
 | Option | Type | Description |
 | --- | --- | --- |
@@ -136,9 +146,6 @@ You can run the 3b configuration multiple times after pushing new code to the `m
 | `mem` | String | Module-specific memory allocation (e.g., `"16G"`). |
 | `j2_file` | String | Path or filename of the Jinja2 template controlling module execution. |
 | `module_args` | Dictionary | Unvalidated key-value pairs for arbitrary, module-specific arguments. Defaults to empty. |
-
-
-
 
 
 

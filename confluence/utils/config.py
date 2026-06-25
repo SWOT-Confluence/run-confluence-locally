@@ -6,6 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    field_validator,
     model_validator,
 )
 from pydantic.types import DirectoryPath, FilePath
@@ -101,6 +102,28 @@ class Config(BaseModel):
 
     # Will be populated during run setup.
     dirs: dict[str, Path] = Field(default_factory=dict)
+
+
+    @field_validator(
+        "root_dir",
+        "roi_file",
+        "swot_input_bind_dir",
+        "priors_bind_dir",
+        "priors_copy_dir",
+        "sword_bind_dir",
+        "sword_copy_dir",
+        "svs_copy_dir",
+        mode="before",
+    )
+    @classmethod
+    def require_absolute_paths(cls, v):
+        if v is None:
+            return v
+            
+        if not Path(v).expanduser().is_absolute():
+            raise ValueError(f"Path must be absolute (full path that begins with a '/'). Received: '{v}'")
+            
+        return v
 
     @model_validator(mode="after")
     def validate_copy_xor_download(self):

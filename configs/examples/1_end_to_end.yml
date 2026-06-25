@@ -45,7 +45,7 @@ repo_branches:
   output: "post_UAT"
 
 hpc:
-  partition: "ceewater_cjgleason-cpu"
+  partition: "cpu,ceewater_cjgleason-cpu"
   account: "pi_cjgleason_umass_edu"
   time: "1-00:00:00"
   batch_size: 1000
@@ -172,6 +172,8 @@ module_templates:
     time: "06:00:00"
     mem: "4G"
     j2_file: "modules/validation.sh.j2"
+    module_args:
+      reach_id_col: "reach_id_v17b"
 
   output:
     time: "05:00:00"

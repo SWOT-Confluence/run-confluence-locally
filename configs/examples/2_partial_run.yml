@@ -7,9 +7,9 @@ roi_file: "/nas/cee-water/cjgleason/ted/confluence/test_roi.json"
 
 swot_input_bind_dir: "/nas/cee-ice/data/Confluence_Runs/global_vD/global_vD_mnt/input/swot"
 
-priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/confluence_end_to_end/end_to_end_mnt/input/sos"
-sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/confluence_end_to_end/end_to_end_mnt/input/sword"
-svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/confluence_end_to_end/end_to_end_mnt/validation"
+priors_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/C_vs_D/confluence_v4D/v4D_mnt/input/sos"
+sword_bind_dir: "/nas/cee-water/cjgleason/ted/confluence/C_vs_D/confluence_v4D/v4D_mnt/input/sword"
+svs_copy_dir: "/nas/cee-water/cjgleason/ted/confluence/C_vs_D/confluence_v4D/v4D_mnt/input/svs"
 
 default_github_username: "SWOT-Confluence"
 default_repository_branch: "main" # Can also be per-module in `repo_branches`
@@ -49,7 +49,7 @@ repo_branches:
 
 
 hpc:
-  partition: "ceewater_cjgleason-cpu"
+  partition: "cpu,ceewater_cjgleason-cpu"
   account: "pi_cjgleason_umass_edu"
   time: "1-00:00:00"
   batch_size: 1000
@@ -176,6 +176,8 @@ module_templates:
     time: "06:00:00"
     mem: "4G"
     j2_file: "modules/validation.sh.j2"
+    module_args:
+      reach_id_col: "reach_id_v17b"
 
   output:
     time: "05:00:00"
