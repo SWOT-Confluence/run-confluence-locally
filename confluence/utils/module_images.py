@@ -258,8 +258,7 @@ def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -
         mod_dir = repo_dir / mod
 
         if mod == "lakeflow":
-            return _create_lakeflow_defs(mod_dir, tag)
-
+            return _create_lakeflow_defs(mod_dir, tag)      
         image_name = get_image_name(mod)
         _build_def_file(
             mod_dir=mod_dir,
@@ -356,7 +355,7 @@ def create_sifs(
                     ] = sub_name
             else:
                 sif_path = sif_dir / f"{mod}.sif"
-                def_file = "Singularity.def"
+                def_file = "Singularity.def"                
                 futures[
                     executor.submit(
                         _build_worker,
@@ -380,9 +379,6 @@ def create_sifs(
 
 
 def _get_modules_to_build(cfg: Config):
-    if cfg.no_build:
-        return set()
-
     # set to removed duplicates after removing modifiers (e.g. expanded and non_expanded setfinder)
     modules = set([strip_modifiers(mod) for mod in cfg.modules_to_run])
 
@@ -422,6 +418,7 @@ def setup_modules(cfg: Config):
     print("\n")
     if modules_to_build:
         create_defs(modules_to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
+        print("defs made")
         create_sifs(modules_to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"])
     else:
         print("Skipping module rebuild.")

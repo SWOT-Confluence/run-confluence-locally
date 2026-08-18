@@ -9,7 +9,8 @@ REPO_NAME_MAP = {
     "lakeflow": "LakeFlow_Confluence",
 }
 
-IMAGE_NAME_MAP = {"hivdi": "h2ivdi"}
+IMAGE_NAME_MAP = {"hivdi": "h2ivdi",
+                  "offline": "offline-discharge-data-product-creation"}
 
 
 def strip_modifiers(name: str):

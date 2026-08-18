@@ -1,6 +1,6 @@
 {{ container_cmd.run }} run \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
-  {{ container_cmd.bind }} {{ flpe_bind_dir }}:/mnt/data/flpe:ro \
+  {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
   {{ container_cmd.bind }} {{ mnt_dir }}/diagnostics:/mnt/data/diagnostics \
   {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
   {{ container_cmd.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \

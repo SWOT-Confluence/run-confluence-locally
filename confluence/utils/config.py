@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, ClassVar
+from typing import Literal
 
 import yaml
 from pydantic import (
@@ -30,17 +30,6 @@ class ModuleTemplate(BaseModel):
 
 
 class Config(BaseModel):
-    FLPE_MODULES: ClassVar[set[str]] = {
-        "metroman",
-        "metroman_consolidation",
-        "unconstrained_momma",
-        "busboi",
-        "sad",
-        "hivdi",
-        "sic4dvar",
-        "consensus",
-    }
-
     @classmethod
     def from_file(cls, file_path: Path | str) -> "Config":
         """
@@ -75,7 +64,6 @@ class Config(BaseModel):
     sword_version: Literal["16", "17"]
 
     swot_input_bind_dir: DirectoryPath | None = None
-    flpe_output_bind_dir: DirectoryPath | None = None
 
     priors_bind_dir: DirectoryPath | None = None
     priors_copy_dir: DirectoryPath | None = None
@@ -105,7 +93,6 @@ class Config(BaseModel):
     modules_to_run: list[str]
 
     rebuild_all_modules: bool
-    no_build: bool = False # Mainly for testing script generation without apptainer installed locally.
     modules_to_rebuild: list[str] = Field(default_factory=list)
 
     repo_branches: dict[str, str] = Field(default_factory=dict)
@@ -179,22 +166,6 @@ class Config(BaseModel):
                 + "The directory will bind as read only so these modules will not be able to "
                 + "write (input) or modify (prediagnostics) the files."
             )
-
-        return self
-
-    @model_validator(mode="after")
-    def validate_flpe_output_binding(self):
-        if self.flpe_output_bind_dir is not None:
-            configured_modules = {m.lower() for m in self.modules_to_run}
-            flpe_modules = {m.lower() for m in self.FLPE_MODULES}
-
-            conflicting = configured_modules & flpe_modules
-
-            if conflicting:
-                raise ValueError(
-                    "flpe_output_bind_dir cannot be set when running FLPE modules: "
-                    f"{sorted(conflicting)}."
-                )
 
         return self
 
