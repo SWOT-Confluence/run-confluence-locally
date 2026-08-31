@@ -17,5 +17,10 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     -j basin.json \
     -v \
     -b {{ module.basin_type }} \
+    --svs-file /mnt/data/input/svs/{{ module.svs_filename }} \
+    --svs-reach-id-col {{ module.svs_reach_id_col }} \
+    --gage-calval-csv /app/CalValSeparation_basin_stratified_v2.csv \
+    --correlation-rho {{ module.correlation_rho }} \
+    --bias-prior-std {{ module.bias_prior_std }} \
     -i ${idx}
 done
