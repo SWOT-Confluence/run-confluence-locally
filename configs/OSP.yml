@@ -33,7 +33,7 @@ modules_to_run:
   - "metroman_consolidation"
   - "unconstrained_momma"
   - "busboi"
-  - "hivdi"
+  #- "hivdi"
   - "sic4dvar"
   - "consensus"
   - "moi"
