@@ -20,7 +20,7 @@ default_image_release_tag: 4.0.0
 submit_driver: True
 
 clone_repos: True
-rebuild_all_modules: False
+rebuild_all_modules: True
 
 modules_to_run:
   - "expanded_setfinder"
