@@ -3,7 +3,7 @@
 root_dir: "/fs/ess/PAS1926/2026confluence/OSP"
 run_name: "OSP_1"
 
-roi_file: "/users/PAS1926/scoss/VersionDconf/reaches_of_interest_svs.json"
+roi_file: "/users/PAS1926/scoss/VersionDconf/Fork/run-confluence-locally/willamette_roi.json"
 
 #priors_zenodo_doi: "10.5281/zenodo.20541765"
 priors_bind_dir: "/fs/ess/PAS1926/2026confluence/SVSfull/confluence_svs_full/svs_full_mnt/input/sos"
@@ -20,7 +20,7 @@ default_image_release_tag: 4.0.0
 submit_driver: True
 
 clone_repos: True
-rebuild_all_modules: True
+rebuild_all_modules: False
 
 modules_to_run:
   - "expanded_setfinder"
@@ -190,4 +190,4 @@ module_templates:
     mem: "8G"
     j2_file: "modules/output.sh.j2"
     module_args: 
-      groups: "input momma metroman sic4dvar hivdi busboi consensus swot validation"
+      groups: "input momma metroman sic4dvar hivdi busboi consensus moi swot validation"
