@@ -165,6 +165,7 @@ def _build_def_file(
     def_filename: str,
     log_name: str,
     is_output: bool = False,
+    is_hivdi: bool = False,
 ) -> Path | None:
     dockerfile_path = mod_dir / dockerfile_name
     if not dockerfile_path.exists():
@@ -211,6 +212,15 @@ def _build_def_file(
                 "    if [ -d /app/output/output ]; then",
                 "        cp -rf /app/output/output/* /app/output/",
                 "        rm -rf /app/output/output",
+                "    fi",
+            ]
+        )
+
+    if is_hivdi:
+        def_content.extend(
+            [
+                "    if [ -f /app/hivdi_config.json ]; then",
+                "        cp -f /app/hivdi_config.json /app/H2iVDI/hivdi_config.json",
                 "    fi",
             ]
         )
@@ -269,6 +279,7 @@ def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -
             def_filename="Singularity.def",
             log_name=mod,
             is_output=(mod == "output"),
+            is_hivdi=(mod == "hivdi"),
         )
 
 
