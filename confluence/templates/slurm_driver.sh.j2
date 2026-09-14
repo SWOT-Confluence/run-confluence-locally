@@ -48,6 +48,8 @@ for slurm_script in "${scripts[@]}"; do
     echo "Starting submission for: $slurm_script"
     date
 
+    unset num_jobs
+
     # ---------------------------------------------------------
     # BRANCH 1: Fixed Array Execution (Continents / Globals)
     # ---------------------------------------------------------
