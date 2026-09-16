@@ -1,0 +1,16 @@
+START_INDEX=$(( ${OFFSET:-0} + SLURM_ARRAY_TASK_ID * ${INDEX_RANGE:-1} ))
+END_INDEX=$(( START_INDEX + ${INDEX_RANGE:-1} - 1 ))
+
+if [[ -n "$MAX_LIMIT" ]]; then
+    (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
+fi
+
+for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
+  {{ container_cmd.run }} run \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_cmd.bind }} {{ mnt_dir }}/flpe/sad:/mnt/data/output \
+    {{ optional_binds | join(' \\\n    ') }} \
+    {{ sif_dir }}/sad.sif \
+    -r reaches.json \
+    -i ${idx}
+done
