@@ -8,4 +8,7 @@
 #SBATCH --time={{ time_limit }}
 #SBATCH --mem={{ mem_limit }}
 
+# Load Apptainer
+source {{ load_apptainer_script }}
+
 {{ rendered_command }}

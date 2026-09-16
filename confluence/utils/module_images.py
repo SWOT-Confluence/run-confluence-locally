@@ -3,10 +3,35 @@ import re
 import shutil
 import subprocess as sp
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from importlib import resources
 from pathlib import Path
 
 from confluence.utils.config import Config
 from confluence.utils.module_names import get_image_name, get_repo_name, strip_modifiers
+
+LOAD_APPTAINER_SCRIPT = resources.files("confluence") / "scripts" / "load_apptainer.sh"
+
+
+def ensure_apptainer_loaded():
+    """Source load_apptainer.sh and merge the resulting environment (e.g. PATH
+    changes from `module load`) into this process, so subprocesses spawned
+    afterwards (such as `apptainer build`) can find the apptainer binary.
+    """
+    result = sp.run(
+        ["bash", "-c", f"source {LOAD_APPTAINER_SCRIPT} 1>&2 && env -0"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to load Apptainer module:\n{result.stderr.decode()}")
+
+    # Merge the subprocess environment into the current process environment. 
+    # This is necessary because `module load` commands in the sourced 
+    # script may modify PATH and other environment variables.
+    for entry in result.stdout.decode().split("\0"):
+        if "=" in entry:
+            key, _, value = entry.partition("=")
+            os.environ[key] = value
 
 
 def _validate_dir(dir: str | Path) -> Path:
@@ -340,6 +365,9 @@ def create_sifs(
 ):
     sif_dir = _validate_dir(sif_dir)
     repo_dir = _validate_dir(repo_dir)
+
+    if container_platform == "apptainer":
+        ensure_apptainer_loaded()
 
     log_dir = sif_dir / "logs"
     log_dir.mkdir(exist_ok=True)
