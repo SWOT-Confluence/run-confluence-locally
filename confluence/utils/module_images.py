@@ -89,6 +89,7 @@ def clone_repos(
 ):
     repo_dir = _validate_dir(repo_dir)
     repo_dir.mkdir(parents=True, exist_ok=True)
+    max_workers = _resolve_max_workers(max_workers)
 
     log_dir = repo_dir / "logs"
     log_dir.mkdir(exist_ok=True)
@@ -199,7 +200,11 @@ def _build_def_file(
 
     entrypoint = _parse_entrypoint(dockerfile_path)
     override_files = _get_override_files(mod_dir)
-    has_requirements = (mod_dir / "requirements.txt").exists()
+    requirements_path = mod_dir / "requirements.txt"
+    has_requirements = requirements_path.exists()
+    # pip needs git on PATH to resolve `pkg @ git+https://...` requirements, but the
+    # base images don't all ship it.
+    needs_git = has_requirements and "git+" in requirements_path.read_text()
 
     def_content = [
         "Bootstrap: docker",
@@ -227,7 +232,10 @@ def _build_def_file(
         def_content.extend(
             [
                 f'    echo "=== {log_name}: installing requirements ==="',
-                "    python3 -m pip install --no-cache-dir --break-system-packages -r /app/requirements.txt",
+                # --ignore-installed: some base images ship apt-installed python packages with no
+                # pip RECORD file, which pip can't uninstall when a requirement wants a newer version.
+                "    python3 -m pip install --no-cache-dir --break-system-packages "
+                "--ignore-installed -r /app/requirements.txt",
             ]
         )
 
@@ -365,6 +373,18 @@ def _build_worker(
     return mod_name, log_file_path
 
 
+def _resolve_max_workers(max_workers: int | None) -> int | None:
+    """None means "auto": full parallelism inside a Slurm allocation (SLURM_JOB_ID
+    set by salloc/sbatch/srun), throttled down on a shared login node, where several
+    concurrent subprocesses each spawn one thread per core by default (`apptainer
+    build` via mksquashfs, and `git clone` via index-pack), and can otherwise exhaust
+    the login node's shared process/thread limits.
+    """
+    if max_workers is not None:
+        return max_workers
+    return None if os.environ.get("SLURM_JOB_ID") else 2
+
+
 def create_sifs(
     modules: list[str],
     container_platform: str,
@@ -377,6 +397,7 @@ def create_sifs(
     build_args = build_args or []
     sif_dir = _validate_dir(sif_dir)
     repo_dir = _validate_dir(repo_dir)
+    max_workers = _resolve_max_workers(max_workers)
 
     if container_platform == "apptainer":
         ensure_apptainer_loaded()
@@ -454,7 +475,7 @@ def _get_modules_to_build(cfg: Config):
         return without_images
 
 
-def setup_modules(cfg: Config):
+def setup_modules(cfg: Config, build_max_workers: int | None = None):
     modules_to_build = _get_modules_to_build(cfg)
 
     print("\n")
@@ -484,6 +505,7 @@ def setup_modules(cfg: Config):
             cfg.dirs["modules"],
             build_args=cfg.apptainer_build_args,
             build_tmpdir=cfg.build_tmpdir,
+            max_workers=build_max_workers,
         )
     else:
         print("Skipping module rebuild.")

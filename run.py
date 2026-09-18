@@ -18,13 +18,20 @@ TODO
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("config_path")
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Number of apptainer builds to run concurrently. Default auto-detects: full "
+        "parallelism inside a Slurm allocation, throttled to 2 outside of Slurm",
+    )
     args = parser.parse_args()
 
     print_title()
 
     cfg = Config.from_file(args.config_path)
     cfg = setup_dirs(cfg)
-    setup_modules(cfg)
+    setup_modules(cfg, build_max_workers=args.max_workers)
     driver_path = write_scripts(cfg)
 
     if cfg.scheduler == "local":
