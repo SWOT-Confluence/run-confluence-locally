@@ -24,21 +24,21 @@ clone_repos: True
 rebuild_all_modules: True
 
 modules_to_run:
-  - "expanded_setfinder"
-  - "expanded_combine_data"
-  - "input"
-  - "non_expanded_setfinder"
-  - "non_expanded_combine_data"
-  - "prediagnostics"
-  - "metroman"
-  - "metroman_consolidation"
-  - "unconstrained_momma"
-  - "busboi"
-  - "hivdi"
-  - "sad"
-  - "sic4dvar"
-  - "consensus"
-  #- "moi"
+  #- "expanded_setfinder"
+  #- "expanded_combine_data"
+  #- "input"
+  #- "non_expanded_setfinder"
+  #- "non_expanded_combine_data"
+  #- "prediagnostics"
+  #- "metroman"
+  #- "metroman_consolidation"
+  #- "unconstrained_momma"
+  #- "busboi"
+  #- "hivdi"
+  #- "sad"
+  #- "sic4dvar"
+  #- "consensus"
+  - "moi"
   #- "offline"
   #- "validation"
   #- "output"
@@ -49,12 +49,14 @@ repo_branches:
   busboi: "post_UAT"
   momma: "post_UAT"
   sic4dvar: "post_UAT"
+  metroman: "Wcon_domain_bugfix" #dev
+  sad: "port-to-sadnm" 
   consensus: "tedlanghorst:main"
   moi: "width_con" #dev
   offline: "NRTfilter" #dev
   validation: "Test_offline" #Dev
   output: "add_offline_valid_back" #Dev
-  metroman: "Wcon_domain_bugfix" #dev
+  
 
 hpc:
   partition: "cpu"
