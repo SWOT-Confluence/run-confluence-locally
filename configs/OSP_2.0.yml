@@ -1,15 +1,16 @@
 
 # The run will be created at: <root_dir>/confluence_<run_name>/
-root_dir: "/fs/ess/PAS1926/2026confluence/OSP"
-run_name: "OSP_3"
+root_dir: "/fs/ess/PAS1926/2026confluence/SVSfull"
+run_name: "svs_9.22.26"
 
-roi_file: "/users/PAS1926/scoss/VersionDconf/Fork/run-confluence-locally/willamette_roi.json"
-
+#roi_file: "/users/PAS1926/scoss/VersionDconf/Fork/run-confluence-locally/willamette_roi.json"
+sword_bind_dir: "/fs/ess/PAS1926/2026confluence/priors/sword"
 #priors_zenodo_doi: "10.5281/zenodo.20541765"
-priors_bind_dir: "/fs/ess/PAS1926/2026confluence/SVSfull/confluence_svs_full/svs_full_mnt/input/sos"
+roi_file: "/users/PAS1926/scoss/VersionDconf/reaches_of_interest_svs.json"
+priors_bind_dir: "/fs/ess/PAS1926/2026confluence/priors/sos"
 #sword_zenodo_doi: "10.5281/zenodo.15299138" #this is for b!
 #sword_zenodo_doi: "10.5281/zenodo.21415370"
-sword_bind_dir: "/fs/ess/PAS1926/2026confluence/SVSfull/confluence_svs_full_c/svs_full_c_mnt/input/sword"
+sword_bind_dir: "/fs/ess/PAS1926/2026confluence/priors/sword"
 svs_repo_filename: "SVS_v1_1_2.nc" #"SVS_v1_0_1.nc"
 #swot_input_bind_dir: "/fs/ess/PAS1926/2026confluence/SVSfull/confluence_svs_full/svs_full_mnt/input/swot"
 
@@ -34,12 +35,13 @@ modules_to_run:
   - "unconstrained_momma"
   - "busboi"
   - "hivdi"
+  - "sad"
   - "sic4dvar"
   - "consensus"
-  - "moi"
-  - "offline"
-  - "validation"
-  - "output"
+  #- "moi"
+  #- "offline"
+  #- "validation"
+  #- "output"
 
 repo_branches:
   setfinder: "tedlanghorst:main"
@@ -48,11 +50,11 @@ repo_branches:
   momma: "post_UAT"
   sic4dvar: "post_UAT"
   consensus: "tedlanghorst:main"
-  moi: "MOI_5_test" #dev
+  moi: "width_con" #dev
   offline: "NRTfilter" #dev
   validation: "Test_offline" #Dev
   output: "add_offline_valid_back" #Dev
-  Metroman: "fix/constrain-width"#dev
+  metroman: "Wcon_domain_bugfix" #dev
 
 hpc:
   partition: "cpu"
