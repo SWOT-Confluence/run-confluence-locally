@@ -38,10 +38,10 @@ modules_to_run:
   #- "sad"
   #- "sic4dvar"
   #- "consensus"
-  - "moi"
+  #- "moi"
   #- "offline"
   #- "validation"
-  #- "output"
+  - "output"
 
 repo_branches:
   setfinder: "tedlanghorst:main"
@@ -55,7 +55,7 @@ repo_branches:
   moi: "width_con" #dev
   offline: "NRTfilter" #dev
   validation: "Test_offline" #Dev
-  output: "add_offline_valid_back" #Dev
+  output: "moi_gauge_info" #Dev
   
 
 hpc:
