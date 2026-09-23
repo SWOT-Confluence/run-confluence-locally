@@ -18,7 +18,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/validation.sif \
     -r reaches.json \
-    -t unconstrained \
+    -t constrained \
     {{ svs_path }} \
     --exclude_gauges_file /mnt/data/input/exclude_gauges.json \
     --svs_reach_id_col {{ module.reach_id_col | default("reach_id_v17b") }} \
