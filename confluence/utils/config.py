@@ -105,6 +105,14 @@ class Config(BaseModel):
     container_platform: Literal["apptainer"] = "apptainer"
     submit_driver: bool
 
+    # Extra flags for `apptainer build`. A rootless host with no setuid starter
+    # and no usable subuid delegation needs ["--ignore-subuid"] to fall back to
+    # a root-mapped namespace.
+    apptainer_build_args: list[str] = Field(default_factory=list)
+    # Build scratch. Apptainer needs several GB per image and cannot always
+    # resolve a /tmp that is a tmpfs or a bind mount.
+    build_tmpdir: Path | None = None
+
     modules_to_run: list[str]
 
     rebuild_all_modules: bool
