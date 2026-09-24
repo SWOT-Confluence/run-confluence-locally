@@ -10,6 +10,7 @@
 #SBATCH --mem={{ mem_limit }}
 {% endif %}
 
+# Load Apptainer
 source {{ load_apptainer_script }}
 
 {{ rendered_command }}

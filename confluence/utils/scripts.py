@@ -7,6 +7,7 @@ from confluence.utils.config import Config
 from confluence.utils.module_names import get_repo_name
 
 TEMPLATES_PATH = resources.files("confluence.templates")
+LOAD_APPTAINER_SCRIPT = resources.files("confluence") / "scripts" / "load_apptainer.sh"
 
 # Most modules run per reach, but these modules run at continent or global scale.
 # These always run just once.
@@ -123,6 +124,7 @@ def create_module_scripts(cfg: Config):
             scheduler=cfg.scheduler,
             hpc=cfg.hpc,
             rendered_command=rendered_command,
+            load_apptainer_script=LOAD_APPTAINER_SCRIPT,
         )
 
         script_path = cfg.dirs["sh_scripts"] / f"{module_name}.sh"

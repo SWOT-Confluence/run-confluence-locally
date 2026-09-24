@@ -54,8 +54,13 @@ if [[ -n "$JOB_ID" ]]; then
     RUN_NAME="${DRIVER_NAME#confluence_driver_}"
 fi
 
+# squeue/scancel -n only match exact job names (no glob support), so spawned
+# module jobs (named "<module>_${RUN_NAME}_cfl") must be matched by suffix
+# ourselves and cancelled by job id.
 DRIVER_COUNT=$(squeue -u "$USER" -h -n "confluence_driver_${RUN_NAME}" | wc -l)
-SPAWNED_COUNT=$(squeue -u "$USER" -h -n "*_${RUN_NAME}_cfl" | wc -l)
+
+mapfile -t SPAWNED_IDS < <(squeue -u "$USER" -h -o "%i %j" | awk -v suffix="_${RUN_NAME}_cfl" '$2 ~ (suffix "$") {print $1}')
+SPAWNED_COUNT=${#SPAWNED_IDS[@]}
 TOTAL_COUNT=$((DRIVER_COUNT + SPAWNED_COUNT))
 
 echo "Run name: $RUN_NAME"
@@ -70,6 +75,8 @@ read -rp "Proceed? [y/N] " ans
 [[ "$ans" =~ ^[Yy]$ ]] || exit 0
 
 scancel -u "$USER" -n "confluence_driver_${RUN_NAME}" || true
-scancel -u "$USER" -n "*_${RUN_NAME}_cfl" || true
+if [[ "$SPAWNED_COUNT" -gt 0 ]]; then
+    scancel "${SPAWNED_IDS[@]}" || true
+fi
 
 echo "Done."
