@@ -3,6 +3,7 @@ import subprocess as sp
 
 from confluence.utils.config import Config
 from confluence.utils.dir_structure import setup_dirs
+from confluence.utils.local_runner import run_local
 from confluence.utils.module_images import setup_modules
 from confluence.utils.scripts import write_scripts
 from confluence.utils.title import print_title
@@ -26,7 +27,12 @@ def main():
     setup_modules(cfg)
     driver_path = write_scripts(cfg)
 
-    if cfg.submit_driver:
+    if cfg.scheduler == "local":
+        if cfg.submit_driver:
+            run_local(cfg)
+        else:
+            print(f"module scripts written to {cfg.dirs['sh_scripts']}")
+    elif cfg.submit_driver:
         sp.run(["sbatch", driver_path])
     else:
         print(f"slurm driver written to {driver_path}")

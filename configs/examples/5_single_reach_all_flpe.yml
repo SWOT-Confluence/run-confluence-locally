@@ -1,0 +1,154 @@
+# Single reach, every FLPE, no `output`.
+#
+# Two levers keep this small. A one-reach roi_file filters continent.json by
+# reach-id prefix, so the per-continent modules drop from 6 tasks to 1; and
+# max_reaches caps the reach-ranged modules, which matters because setfinder
+# expansion is reach-dependent (a 100-reach ROI expanded to 184).
+#
+# `output` is omitted deliberately: it copies and rewrites the whole continent
+# SoS regardless of reach count, and was ~98% of the wall time of a
+# single-reach run (619s of 630s).
+root_dir: "/home/kandread/Projects/dawg/runs"
+run_name: "single_flpe"
+
+roi_file: "/home/kandread/Projects/dawg/data/roi_single.json"
+
+swot_input_bind_dir: "/home/kandread/Projects/dawg/data/swot"
+priors_bind_dir: "/home/kandread/Projects/dawg/data/sos"
+sword_bind_dir: "/home/kandread/Projects/dawg/data/sword"
+svs_copy_file: "/home/kandread/Projects/dawg/data/svs/SVS_v1_0_1.nc"
+
+default_github_username: "SWOT-Confluence"
+default_repository_branch: "main"
+default_image_release_tag: 4.0.0
+
+submit_driver: True
+clone_repos: True
+rebuild_all_modules: False
+
+max_reaches: 1
+
+scheduler: "local"
+
+local:
+  concurrent_jobs: 16
+  reach_chunks: 1
+
+apptainer_build_args:
+  - "--ignore-subuid"
+build_tmpdir: "/home/kandread/Projects/dawg/runs/.apptainer_tmp"
+
+modules_to_run:
+  - "expanded_setfinder"
+  - "expanded_combine_data"
+  # - "input"            # skipped: data/swot is already populated
+  - "non_expanded_setfinder"
+  - "non_expanded_combine_data"
+  # - "prediagnostics"   # skipped: data/swot has already been through it
+  - "metroman"
+  - "metroman_consolidation"
+  - "unconstrained_momma"
+  - "busboi"
+  - "hivdi"
+  - "sic4dvar"
+  - "sad"
+  - "consensus"
+  - "validation"
+  # - "output"           # see header
+
+# Branch pins follow sad_medbow.yml, a known-good full HPC run. hivdi is
+# deliberately unpinned there, so it tracks main.
+repo_branches:
+  sad: "port-to-sadnm"
+  setfinder: "tedlanghorst:main"
+  busboi: "post_UAT"
+  momma: "post_UAT"
+  validation: "post_UAT"
+  sic4dvar: "post_UAT"
+  consensus: "tedlanghorst:main"
+
+sword_version: "17"
+
+# time/mem are unused when scheduler is 'local' but the schema still wants them.
+module_templates:
+  expanded_setfinder:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/setfinder.sh.j2"
+    module_args:
+      reach_file: "-r reaches_of_interest.json"
+      expanded: True
+
+  non_expanded_setfinder:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/setfinder.sh.j2"
+    module_args:
+      reach_file: "-r expanded_reaches_of_interest.json"
+      expanded: False
+
+  expanded_combine_data:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/combine_data.sh.j2"
+    module_args:
+      expanded: True
+
+  non_expanded_combine_data:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/combine_data.sh.j2"
+    module_args:
+      expanded: False
+
+  metroman:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/metroman.sh.j2"
+
+  metroman_consolidation:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/metroman_consolidation.sh.j2"
+
+  unconstrained_momma:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/momma.sh.j2"
+    module_args:
+      m_parameter: 3
+      constrained: False
+
+  busboi:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/busboi.sh.j2"
+
+  hivdi:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/hivdi.sh.j2"
+
+  sic4dvar:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/sic4dvar.sh.j2"
+    module_args:
+      config_file: "sic4dvar_param_confluence.ini"
+
+  sad:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/sad.sh.j2"
+
+  consensus:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/consensus.sh.j2"
+
+  validation:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/validation.sh.j2"
+    module_args:
+      reach_id_col: "reach_id_v17b"
