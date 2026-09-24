@@ -86,6 +86,9 @@ class Config(BaseModel):
     sword_zenodo_doi: str | None = None
 
     svs_copy_dir: DirectoryPath | None = None
+    # Explicit path to a single SVS file. Preferred over svs_copy_dir when the
+    # source directory holds more than one .nc, which svs_copy_dir rejects.
+    svs_copy_file: FilePath | None = None
     svs_repo_filename: str | None = None
 
     default_github_username: str
@@ -126,6 +129,7 @@ class Config(BaseModel):
         "sword_bind_dir",
         "sword_copy_dir",
         "svs_copy_dir",
+        "svs_copy_file",
         mode="before",
     )
     @classmethod
@@ -146,7 +150,7 @@ class Config(BaseModel):
         exclusive_groups = [
             ("priors_bind_dir", "priors_copy_dir", "priors_zenodo_doi"),
             ("sword_bind_dir", "sword_copy_dir", "sword_zenodo_doi"),
-            ("svs_copy_dir", "svs_repo_filename"),
+            ("svs_copy_dir", "svs_copy_file", "svs_repo_filename"),
         ]
 
         for attr_group in exclusive_groups:
