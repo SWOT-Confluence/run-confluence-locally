@@ -1,4 +1,5 @@
 #!/bin/bash
+{% if scheduler == "slurm" %}
 #SBATCH --job-name={{ job_name }}
 #SBATCH --output={{ report_dir }}/{{ module_name }}.%j_%a.out
 #SBATCH --partition={{ hpc.partition }}
@@ -7,5 +8,6 @@
 #SBATCH --account={{ hpc.account }}
 #SBATCH --time={{ time_limit }}
 #SBATCH --mem={{ mem_limit }}
+{% endif %}
 
 {{ rendered_command }}

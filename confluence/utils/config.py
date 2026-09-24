@@ -21,6 +21,21 @@ class HPC(BaseModel):
     reach_chunks: int = Field(..., gt=0)
 
 
+class Local(BaseModel):
+    """Workstation equivalent of `HPC`.
+
+    There is no batch_size analogue: batching exists on the HPC side to keep
+    individual slurm arrays to a sane size, which is meaningless when we hold
+    the whole task list in one process.
+    """
+
+    # Defaults to one worker per core at setup time if left unset.
+    concurrent_jobs: int | None = Field(None, gt=0)
+    reach_chunks: int = Field(1, gt=0)
+    # Per-module override, for the memory-hungry modules (e.g. {"output": 2}).
+    module_concurrency: dict[str, int] = Field(default_factory=dict)
+
+
 class ModuleTemplate(BaseModel):
     time: str
     mem: str
@@ -121,7 +136,9 @@ class Config(BaseModel):
 
     repo_branches: dict[str, str] = Field(default_factory=dict)
 
-    hpc: HPC = Field(default_factory=HPC)
+    scheduler: Literal["slurm", "local"] = "slurm"
+    hpc: HPC | None = None
+    local: Local = Field(default_factory=Local)
     module_templates: dict[str, ModuleTemplate]
 
     # Will be populated during run setup.
@@ -225,6 +242,16 @@ class Config(BaseModel):
 
         if offending:
             raise ValueError(f"{offending} bind paths are not on the same filesystem as the root_dir.")
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_scheduler(self):
+        if self.scheduler == "slurm" and self.hpc is None:
+            raise ValueError("scheduler is 'slurm' but no `hpc` block was given.")
+
+        if self.scheduler == "local" and self.hpc is not None:
+            print("scheduler is 'local' so the `hpc` block will be ignored.")
 
         return self
 

@@ -120,6 +120,7 @@ def create_module_scripts(cfg: Config):
             module_name=module_name,
             time_limit=template_args.time,
             mem_limit=template_args.mem,
+            scheduler=cfg.scheduler,
             hpc=cfg.hpc,
             rendered_command=rendered_command,
         )
@@ -129,7 +130,7 @@ def create_module_scripts(cfg: Config):
             file.write(rendered_script)
 
 
-def create_slurm_driver(cfg: Config):
+def create_slurm_driver(cfg: Config, n_continents: int):
     env = Environment(
         loader=PackageLoader("confluence", "templates"),
         trim_blocks=True,
@@ -139,8 +140,6 @@ def create_slurm_driver(cfg: Config):
 
     # build scripts list in order of modules_to_run list
     scripts = [f"{module}.sh" for module in cfg.modules_to_run]
-
-    n_continents = _overwrite_continent_file(cfg)
 
     # Unlisted scripts run based on length of their reach file. Done in the template.
     # TODO would be easier to read if we did all module counts here instead of in the slurm template.
@@ -168,6 +167,13 @@ def create_slurm_driver(cfg: Config):
 
 def write_scripts(cfg: Config):
     create_module_scripts(cfg)
-    driver_path = create_slurm_driver(cfg)
 
-    return driver_path
+    # Both schedulers need continent.json reduced to the active continents
+    # before any per-continent module is counted.
+    n_continents = _overwrite_continent_file(cfg)
+
+    if cfg.scheduler == "slurm":
+        return create_slurm_driver(cfg, n_continents)
+
+    # The local runner walks cfg.modules_to_run itself, so there is no driver.
+    return None
