@@ -10,4 +10,6 @@
 #SBATCH --mem={{ mem_limit }}
 {% endif %}
 
+source {{ load_apptainer_script }}
+
 {{ rendered_command }}
