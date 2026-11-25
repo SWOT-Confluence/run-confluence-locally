@@ -12,7 +12,7 @@ mkdir -p ${TASK_TMPDIR}/arviz ${TASK_TMPDIR}/pytensor
 trap 'rm -rf "${TASK_TMPDIR}"' EXIT
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_cmd.run }} run \
+  cfl_unit "${idx}" {{ container_cmd.run }} run \
     --env XDG_CACHE_HOME=${TASK_TMPDIR} \
     --env PYTENSOR_FLAGS=base_compiledir=${TASK_TMPDIR}/pytensor \
     {{ container_cmd.bind }} ${TASK_TMPDIR}:${TASK_TMPDIR}  \
@@ -22,5 +22,13 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ sif_dir }}/hivdi.sif \
     /mnt/data/input/reaches.json \
     --input-dir /mnt/data/input \
+    --output-dir /mnt/data/flpe/hivdi \
     -i ${idx}
+
+  # Older h2ivdi images (CONFLUENCE_US set, e.g. 3.0.0) write <reach>_h2ivdi.nc but
+  # validation/output expect <reach>_hivdi.nc.
+  reach_id=$(jq -r ".[${idx}].reach_id" {{ mnt_dir }}/input/reaches.json)
+  if [[ -f {{ mnt_dir }}/flpe/hivdi/${reach_id}_h2ivdi.nc ]]; then
+    mv {{ mnt_dir }}/flpe/hivdi/${reach_id}_h2ivdi.nc {{ mnt_dir }}/flpe/hivdi/${reach_id}_hivdi.nc
+  fi
 done

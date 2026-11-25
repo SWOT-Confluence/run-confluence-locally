@@ -6,15 +6,16 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 {% set svs_path = ("--svs_file /mnt/data/input/svs/" ~ module.svs_filename) if module.svs_filename else "" %}
+{% set exclude_gauges_path = module.exclude_gauges_path | default(module_dir ~ "/reachids_svs_gages_used_to_train_v17.json") %}
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_cmd.run }} run \
+  cfl_unit "${idx}" {{ container_cmd.run }} run \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ container_cmd.bind }} {{ flpe_bind_dir }}:/mnt/data/flpe:ro \
     {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/moi \
     {{ container_cmd.bind }} {{ mnt_dir }}/offline:/mnt/data/offline \
     {{ container_cmd.bind }} {{ mnt_dir }}/validation:/mnt/data/output \
-    {{ container_cmd.bind }} {{ module_dir }}/reachids_svs_gages_used_to_train_v17.json:/mnt/data/input/exclude_gauges.json \
+    {{ container_cmd.bind }} {{ exclude_gauges_path }}:/mnt/data/input/exclude_gauges.json \
     {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/validation.sif \
     -r reaches.json \

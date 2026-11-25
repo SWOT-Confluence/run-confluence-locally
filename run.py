@@ -36,9 +36,8 @@ def main():
 
     if cfg.scheduler == "local":
         if cfg.submit_driver:
-            run_local(cfg)
-        else:
-            print(f"module scripts written to {cfg.dirs['sh_scripts']}")
+            return run_local(cfg)
+        print(f"module scripts written to {cfg.dirs['sh_scripts']}")
     elif cfg.submit_driver:
         sp.run(["sbatch", driver_path])
     else:
@@ -46,4 +45,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -119,6 +119,26 @@ def clone_repos(
                 print(f"[{name}]. Check {log_dir}. \nException: {e}")
 
 
+def copy_local_repos(local_map: dict, repo_dir: str | Path):
+    """Copy module source from local directories (modules not on GitHub) in place of a clone."""
+    repo_dir = _validate_dir(repo_dir)
+    repo_dir.mkdir(parents=True, exist_ok=True)
+
+    for name, src in local_map.items():
+        path = repo_dir / name
+        if path.exists():
+            shutil.rmtree(path)
+        print(f"Copying local repository: {src} -> {path}")
+        shutil.copytree(
+            src,
+            path,
+            ignore=shutil.ignore_patterns("__pycache__", "*.sif", "Singularity.def"),
+        )
+        # The image keeps these modes and runs as the user, not as root: a directory without the
+        # o+x bit (e.g. a group-only source tree) can't be entered at runtime.
+        sp.run(["chmod", "-R", "a+rX", str(path)], check=True)
+
+
 def _parse_entrypoint(dockerfile_path: Path) -> str | None:
     content = dockerfile_path.read_text()
     for line in content.split("\n"):
@@ -294,8 +314,14 @@ def _create_lakeflow_defs(mod_dir: Path, tag: str) -> list[Path]:
         )
 
 
-def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -> Path | list[Path] | None:
+def create_defs(
+    modules: list[str],
+    repo_dir: str | Path,
+    tag: str = "latest",
+    tag_map: dict | None = None,
+) -> Path | list[Path] | None:
     repo_dir = _validate_dir(repo_dir)
+    tag_map = tag_map or {}
 
     for mod in modules:
         mod_dir = repo_dir / mod
@@ -303,11 +329,19 @@ def create_defs(modules: list[str], repo_dir: str | Path, tag: str = "latest") -
         if mod == "lakeflow":
             return _create_lakeflow_defs(mod_dir, tag)
 
+        # A module that is not published on ghcr.io/swot-confluence ships its own
+        # self-contained recipe: use it instead of overlaying files on a release image.
+        local_def = mod_dir / "Singularity.local.def"
+        if local_def.exists():
+            shutil.copy2(local_def, mod_dir / "Singularity.def")
+            print(f"{mod}: Singularity.def copied from Singularity.local.def (self-contained build).")
+            continue
+
         image_name = get_image_name(mod)
         _build_def_file(
             mod_dir=mod_dir,
             image_name=image_name,
-            tag=tag,
+            tag=tag_map.get(mod, tag),
             dockerfile_name="Dockerfile",
             def_filename="Singularity.def",
             log_name=mod,
@@ -479,16 +513,20 @@ def setup_modules(cfg: Config, build_max_workers: int | None = None):
     modules_to_build = _get_modules_to_build(cfg)
 
     print("\n")
+    local_repos = {m: cfg.local_repo_dirs[m] for m in modules_to_build if m in cfg.local_repo_dirs}
+    if local_repos:
+        copy_local_repos(local_repos, cfg.dirs["modules"])
+
     if cfg.clone_repos:
         clone_repos(
-            modules_to_build,
+            modules_to_build - local_repos.keys(),
             cfg.default_github_username,
             cfg.default_repository_branch,
             cfg.repo_branches,
             cfg.dirs["run"] / "modules",
         )
     else:
-        existing_repos = {d for d in cfg.dirs["modules"].iterdir() if d.is_dir()}
+        existing_repos = {d.name for d in cfg.dirs["modules"].iterdir() if d.is_dir()}
         missing_repos = modules_to_build - existing_repos
         if missing_repos:
             raise ValueError(f"Missing repositories for {missing_repos}. Set cfg.clone_repos = True to download.")
@@ -497,7 +535,12 @@ def setup_modules(cfg: Config, build_max_workers: int | None = None):
 
     print("\n")
     if modules_to_build:
-        create_defs(modules_to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
+        create_defs(
+            modules_to_build,
+            cfg.dirs["modules"],
+            cfg.default_image_release_tag,
+            tag_map=cfg.image_release_tags,
+        )
         create_sifs(
             modules_to_build,
             cfg.container_platform,

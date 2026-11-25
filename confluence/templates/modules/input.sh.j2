@@ -12,7 +12,7 @@ fi
 # We change it in the args here to match the other modules 
 # which makes forming the optional binds a lot easier.
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_cmd.run }} run \
+  cfl_unit "${idx}" {{ container_cmd.run }} run \
     --env SKIP_MOUNT_CHECK=true \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ optional_binds | join(' \\\n    ') }} \

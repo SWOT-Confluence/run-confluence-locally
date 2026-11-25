@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --job-name=audit_{{ run_name }}_cfl
+#SBATCH --output={{ dirs['log'] }}/audit_%j.out
+#SBATCH --partition={{ hpc.partition }}
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --account={{ hpc.account }}
+
+# End-of-run audit. slurm_driver.sh submits this at start-up with --dependency=afterany:<driver>, so it
+# runs once the driver has ended for any reason (done, aborted, time limit, scancel, node failure).
+# Records a driver that died without cleaning up, writes the final monitor/status.txt and runs the audit
+# (monitor/audit.md, audit.html, RUN_GUIDE.md).
+export PYTHONPATH="{{ repo_root }}${PYTHONPATH:+:${PYTHONPATH}}"
+exec "{{ python_exe }}" -m confluence.monitor finish --run-dir "{{ dirs['run'] }}" --driver-job "${DRIVER_JOB_ID:?DRIVER_JOB_ID not set}"

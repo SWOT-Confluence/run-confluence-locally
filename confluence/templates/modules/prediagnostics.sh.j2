@@ -5,10 +5,15 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
+{# config_file: a prediagnostics config.R (GLOBAL_PARAMS) bound over the image's, e.g. one with the Tukey
+   outlier filter off. #}
+{% set config_bind = (container_cmd.bind ~ " " ~ module.config_file ~ ":/app/prediagnostics/config.R:ro") if module.config_file else "" %}
+
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-    {{ container_cmd.run }} run \
+    cfl_unit "${idx}" {{ container_cmd.run }} run \
       {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
       {{ container_cmd.bind }} {{ mnt_dir }}/diagnostics/prediagnostics:/mnt/data/output \
+      {{ config_bind }} \
       {{ optional_binds | join(' \\\n    ') }} \
       {{ sif_dir }}/prediagnostics.sif \
       -i ${idx} \

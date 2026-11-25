@@ -1,10 +1,10 @@
 #!/bin/bash
 {% if scheduler == "slurm" %}
 #SBATCH --job-name={{ job_name }}
-#SBATCH --output={{ report_dir }}/{{ module_name }}.%j_%a.out
+#SBATCH --output={{ report_dir }}/{{ module_name }}.%A_%a.out
 #SBATCH --partition={{ hpc.partition }}
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task={{ cpus | default(1) }}
 #SBATCH --account={{ hpc.account }}
 #SBATCH --time={{ time_limit }}
 #SBATCH --mem={{ mem_limit }}
@@ -13,4 +13,12 @@
 # Load Apptainer
 source {{ load_apptainer_script }}
 
+# Per-unit bookkeeping for the run monitor (see cfl_lib.sh)
+CFL_MODULE="{{ module_name }}"
+CFL_MONITOR_DIR="{{ monitor_dir }}"
+CFL_INDEX_JSON="{{ index_json }}"
+source {{ cfl_lib_script }}
+
 {{ rendered_command }}
+
+cfl_finish

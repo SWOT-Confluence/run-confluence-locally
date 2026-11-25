@@ -15,7 +15,7 @@ from confluence.utils.config import Config
 
 def _create_directory_structure(run_dir: Path, mnt_dir: Path):
     # These get added to the cfg.dirs dictionary
-    dir_list = ["log", "modules", "report", "sh_scripts", "sif"]
+    dir_list = ["log", "modules", "monitor", "report", "sh_scripts", "sif"]
 
     # These paths are created as new directories but not added
     # to the dirs dictionary.

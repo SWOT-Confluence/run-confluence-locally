@@ -1,4 +1,4 @@
-{{ container_cmd.run }} run \
+cfl_unit "${SLURM_ARRAY_TASK_ID:-0}" {{ container_cmd.run }} run \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ container_cmd.bind }} {{ flpe_bind_dir }}:/mnt/data/flpe:ro \
   {{ container_cmd.bind }} {{ mnt_dir }}/diagnostics:/mnt/data/diagnostics \

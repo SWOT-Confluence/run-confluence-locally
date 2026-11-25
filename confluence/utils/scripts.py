@@ -1,13 +1,19 @@
 import json
+import shutil
+import sys
 from importlib import resources
+from pathlib import Path
 
 from jinja2 import Environment, PackageLoader
 
+from confluence.monitor.registry import get_spec
 from confluence.utils.config import Config
 from confluence.utils.module_names import get_repo_name
 
 TEMPLATES_PATH = resources.files("confluence.templates")
 LOAD_APPTAINER_SCRIPT = resources.files("confluence") / "scripts" / "load_apptainer.sh"
+CFL_LIB_SCRIPT = resources.files("confluence") / "scripts" / "cfl_lib.sh"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Most modules run per reach, but these modules run at continent or global scale.
 # These always run just once.
@@ -84,13 +90,26 @@ def _get_optional_binds(cfg: Config, bind_cmd: str):
     return binds
 
 
+def _index_json(cfg: Config, module_name: str) -> str:
+    """Index file a module's unit indices point into (used by cfl_unit to resolve unit ids)."""
+    spec = get_spec(module_name, cfg.module_templates[module_name].module_args)
+    return str(cfg.dirs["input"] / spec.index) if spec.index else ""
+
+
+def _copy_cfl_lib(cfg: Config) -> Path:
+    # Copied into the run so running jobs keep the version they were rendered with.
+    dest = cfg.dirs["sh_scripts"] / "cfl_lib.sh"
+    shutil.copyfile(CFL_LIB_SCRIPT, dest)
+    return dest
+
+
 def create_module_scripts(cfg: Config):
     env = Environment(loader=PackageLoader("confluence", "templates"), trim_blocks=True)
+    cfl_lib = _copy_cfl_lib(cfg)
+    monitor_dir = cfg.dirs["run"] / "monitor"
 
-    # SBATCH header commands
+    # SBATCH header (slurm only) + apptainer + cfl_lib bookkeeping around the module command
     module_template_file = env.get_template("sbatch.sh.j2")
-    # TODO: truly local runs (not HPC) would want to remove this header? Would also need
-    # to handle the indexing that relies on job arrays in the driver script...
 
     platform_dict = _get_platform_dict(cfg.container_platform)
     optional_binds = _get_optional_binds(cfg, platform_dict["bind"])
@@ -122,14 +141,40 @@ def create_module_scripts(cfg: Config):
             time_limit=template_args.time,
             mem_limit=template_args.mem,
             scheduler=cfg.scheduler,
+            cpus=template_args.cpus,
             hpc=cfg.hpc,
             rendered_command=rendered_command,
             load_apptainer_script=LOAD_APPTAINER_SCRIPT,
+            monitor_dir=monitor_dir,
+            index_json=_index_json(cfg, module_name),
+            cfl_lib_script=cfl_lib,
         )
 
         script_path = cfg.dirs["sh_scripts"] / f"{module_name}.sh"
         with open(script_path, "w") as file:
             file.write(rendered_script)
+
+
+def module_plan(cfg: Config, n_continents: int) -> list[dict]:
+    """How each module in modules_to_run is fanned out; shared by the slurm driver and the local runner.
+
+    Continent / global modules are fixed-size arrays; every other module runs one unit per entry of
+    its index file (counted at runtime, after upstream modules have written it).
+    """
+    default_chunks = cfg.local.reach_chunks if cfg.scheduler == "local" else cfg.hpc.reach_chunks
+    modules = []
+    for module in cfg.modules_to_run:
+        entry = {"name": module, "script": f"{module}.sh"}
+        if module in CONTINENT_MODULES or module in GLOBAL_MODULES:
+            entry.update(kind="fixed", count=n_continents if module in CONTINENT_MODULES else 1)
+        else:
+            index_json = _index_json(cfg, module) or str(cfg.dirs["input"] / "reaches.json")
+            gate_on = cfg.monitor.for_module(module, "gate") is not False
+            canary = cfg.monitor.for_module(module, "canary_tasks") if gate_on else 0
+            index_range = cfg.module_templates[module].reach_chunks or default_chunks
+            entry.update(kind="reach", index_json=index_json, canary_tasks=canary, index_range=index_range)
+        modules.append(entry)
+    return modules
 
 
 def create_slurm_driver(cfg: Config, n_continents: int):
@@ -139,25 +184,18 @@ def create_slurm_driver(cfg: Config, n_continents: int):
         lstrip_blocks=True,
     )
     template = env.get_template("slurm_driver.sh.j2")
-
-    # build scripts list in order of modules_to_run list
-    scripts = [f"{module}.sh" for module in cfg.modules_to_run]
-
-    # Unlisted scripts run based on length of their reach file. Done in the template.
-    # TODO would be easier to read if we did all module counts here instead of in the slurm template.
-    # This might also make it easier to implement the non-hpc version too.
-    module_counts = {
-        **{f"{module}.sh": n_continents for module in CONTINENT_MODULES},
-        **{f"{module}.sh": 1 for module in GLOBAL_MODULES},
-    }
+    modules = module_plan(cfg, n_continents)
 
     rendered_script = template.render(
         run_name=cfg.run_name,
         hpc=cfg.hpc,
         dirs=cfg.dirs,
         max_reaches=cfg.max_reaches,
-        scripts=scripts,
-        module_counts=module_counts,
+        modules=modules,
+        monitor=cfg.monitor,
+        monitor_dir=cfg.dirs["run"] / "monitor",
+        python_exe=sys.executable,
+        repo_root=REPO_ROOT,
     )
 
     out_path = cfg.dirs["sh_scripts"] / "slurm_driver.sh"
@@ -167,15 +205,47 @@ def create_slurm_driver(cfg: Config, n_continents: int):
     return out_path
 
 
+def create_audit_script(cfg: Config) -> Path:
+    env = Environment(loader=PackageLoader("confluence", "templates"), trim_blocks=True)
+    rendered = env.get_template("audit.sh.j2").render(
+        run_name=cfg.run_name,
+        hpc=cfg.hpc,
+        dirs=cfg.dirs,
+        monitor_dir=cfg.dirs["run"] / "monitor",
+        python_exe=sys.executable,
+        repo_root=REPO_ROOT,
+    )
+    out_path = cfg.dirs["sh_scripts"] / "audit.sh"
+    out_path.write_text(rendered)
+    return out_path
+
+
+def write_run_records(cfg: Config):
+    """Provenance + RUN_GUIDE.md. Never fatal: the run must not depend on the monitor."""
+    from confluence.monitor.context import RunContext
+    from confluence.monitor.guide import write_guide
+    from confluence.monitor.provenance import write_setup_provenance
+
+    try:
+        write_setup_provenance(cfg)
+        print(f"Wrote {write_guide(RunContext(cfg.dirs['run']))}")
+    except Exception as e:
+        print(f"WARNING: could not write provenance / RUN_GUIDE.md: {type(e).__name__}: {e}")
+
+
 def write_scripts(cfg: Config):
+    (cfg.dirs["run"] / "monitor").mkdir(parents=True, exist_ok=True)
     create_module_scripts(cfg)
 
     # Both schedulers need continent.json reduced to the active continents
     # before any per-continent module is counted.
     n_continents = _overwrite_continent_file(cfg)
 
-    if cfg.scheduler == "slurm":
-        return create_slurm_driver(cfg, n_continents)
-
     # The local runner walks cfg.modules_to_run itself, so there is no driver.
-    return None
+    driver_path = None
+    if cfg.scheduler == "slurm":
+        create_audit_script(cfg)
+        driver_path = create_slurm_driver(cfg, n_continents)
+    write_run_records(cfg)
+
+    return driver_path

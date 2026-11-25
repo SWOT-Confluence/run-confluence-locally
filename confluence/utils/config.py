@@ -11,6 +11,8 @@ from pydantic import (
 )
 from pydantic.types import DirectoryPath, FilePath
 
+from confluence.monitor.config import MonitorConfig
+
 
 class HPC(BaseModel):
     partition: str
@@ -22,17 +24,19 @@ class HPC(BaseModel):
 
 
 class Local(BaseModel):
-    """Workstation equivalent of `HPC`.
+    """Workstation equivalent of `HPC` (used when scheduler is 'local').
 
     There is no batch_size analogue: batching exists on the HPC side to keep
     individual slurm arrays to a sane size, which is meaningless when we hold
     the whole task list in one process.
     """
 
-    # Defaults to one worker per core at setup time if left unset.
+    # Tasks running at once. Defaults to one per CPU core if left unset. Can be changed while a run is
+    # going with `python -m confluence.monitor throttle`.
     concurrent_jobs: int | None = Field(None, gt=0)
+    # Index entries per task, unless a module template sets its own reach_chunks.
     reach_chunks: int = Field(1, gt=0)
-    # Per-module override, for the memory-hungry modules (e.g. {"output": 2}).
+    # Per-module replacement for concurrent_jobs, for the memory-hungry modules (e.g. {"output": 2}).
     module_concurrency: dict[str, int] = Field(default_factory=dict)
 
 
@@ -40,6 +44,10 @@ class ModuleTemplate(BaseModel):
     time: str
     mem: str
     j2_file: str
+    # Slurm --cpus-per-task for this module's array tasks (not used by the local scheduler).
+    cpus: int = Field(1, gt=0)
+    # Index entries per array task for this module; None = hpc.reach_chunks (local.reach_chunks).
+    reach_chunks: int | None = Field(None, gt=0)
     # kind of sloppy but module specific args go in an unvalidated dict
     module_args: dict = Field(default_factory=dict)
 
@@ -135,11 +143,18 @@ class Config(BaseModel):
     modules_to_rebuild: list[str] = Field(default_factory=list)
 
     repo_branches: dict[str, str] = Field(default_factory=dict)
+    # Per-module override of default_image_release_tag (the ghcr base image the .sif is built from).
+    image_release_tags: dict[str, str] = Field(default_factory=dict)
+    # Per-module local source directory, copied into the run instead of cloned (module not on GitHub).
+    local_repo_dirs: dict[str, DirectoryPath] = Field(default_factory=dict)
 
     scheduler: Literal["slurm", "local"] = "slurm"
     hpc: HPC | None = None
     local: Local = Field(default_factory=Local)
     module_templates: dict[str, ModuleTemplate]
+
+    # Run gate / canary / monitor job / audit settings (see confluence/monitor and README "Monitoring").
+    monitor: MonitorConfig = Field(default_factory=MonitorConfig)
 
     # Will be populated during run setup.
     dirs: dict[str, Path] = Field(default_factory=dict)

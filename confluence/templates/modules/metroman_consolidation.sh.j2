@@ -1,4 +1,4 @@
-{{ container_cmd.run }} run \
+cfl_unit "${SLURM_ARRAY_TASK_ID:-0}" {{ container_cmd.run }} run \
   --env AWS_BATCH_JOB_ID='foo' \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ container_cmd.bind }} {{ mnt_dir }}/flpe/metroman:/mnt/data/flpe \

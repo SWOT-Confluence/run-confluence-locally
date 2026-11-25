@@ -7,176 +7,344 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=5G
+#SBATCH --mem=8G
 #SBATCH --account={{ hpc.account }}
 
+# Confluence slurm driver. Submits each module in modules_to_run as a job array and waits for it.
+# Per-reach modules optionally start with a small "canary" array; after the canary, after each
+# batch and after each module a deterministic gate (python -m confluence.monitor gate) checks the
+# per-unit ledger and outputs, and aborts the run on systemic failure. The monitor runs in the
+# background of this job to watch long arrays and keep <run>/monitor/status.txt current, and an
+# audit job (audit.sh, --dependency=afterany on this job) audits the run however this job ends.
+#
+# Control files in {{ monitor_dir }}:
+#   ABORT            if present, the driver cancels its current array and exits (code 3)
+#   concurrent_jobs  if present, replaces hpc.concurrent_jobs: set on the array in flight with scontrol
+#                    and used for every later array (python -m confluence.monitor throttle <run_dir> <n>)
+#   submissions.tsv  one row per submitted array (read by the gate/monitor/audit)
+#   driver.heartbeat touched while waiting on arrays
+#   driver.exit      "done", "aborted" or "terminated" when the driver stops
+
+set -o pipefail
+
 run='{{ run_name }}'
-echo "Run: $run"
+RUN_DIR="{{ dirs['run'] }}"
+MON_DIR="{{ monitor_dir }}"
+SCRIPTS_DIR="{{ dirs['sh_scripts'] }}"
+PY="{{ python_exe }}"
+export PYTHONPATH="{{ repo_root }}${PYTHONPATH:+:${PYTHONPATH}}"
 
-directory="{{ dirs['run'] }}"
-
-# Parameters
-index_range={{ hpc.reach_chunks }}
-json_file="{{ dirs["mnt"] }}/input/reaches_of_interest.json"
-expanded_json_file="{{ dirs["mnt"] }}/input/expanded_reaches_of_interest.json"
-reach_json_file="{{ dirs["mnt"] }}/input/reaches.json"
-basin_json_file="{{ dirs["mnt"] }}/input/basin.json"
-metroman_json_file="{{ dirs["mnt"] }}/input/metrosets.json"
-
-default_jobs=$(jq length "$json_file")
-max_reaches={{ max_reaches | default(0) }}
-
-# Adjust to HPC requirements
+INPUT_DIR="{{ dirs['input'] }}"
 batch_size={{ hpc.batch_size }}
 concurrent_jobs={{ hpc.concurrent_jobs }}
+CONFIG_CONCURRENT_JOBS=${concurrent_jobs}
+max_reaches={{ max_reaches | default(0) }}
+GATE_ENABLED={{ 1 if monitor.enabled else 0 }}
+MONITOR_ENABLED={{ 1 if monitor.enabled and monitor.watcher else 0 }}
 
-# Map specific modules to their pre-calculated job counts. Other modules
-# will determine the number of jobs based on the length of the reach file.
-declare -A module_counts=(
-{% for script, count in module_counts.items() %}
-    [{{ script }}]="{{ count }}"
-{% endfor %}
-)
+DRIVER_JOB_ID="${SLURM_JOB_ID:-local}"
+CURRENT_ARRAY=""
+WATCH_PID=""
+AUDIT_JOB=""
 
-scripts=(
-{% for script in scripts %}
-    "{{ script }}"
-{% endfor %}
-)
+mkdir -p "${MON_DIR}"
+SUBMISSIONS="${MON_DIR}/submissions.tsv"
+EVENTS="${MON_DIR}/events.log"
+CONCURRENT_FILE="${MON_DIR}/concurrent_jobs"
+CONCURRENT_SEEN=""   # last content read from CONCURRENT_FILE
+ARRAY_THROTTLE=""    # task limit currently set on CURRENT_ARRAY
+THROTTLE_TRIES=0
 
-for slurm_script in "${scripts[@]}"; do
-    echo "Starting submission for: $slurm_script"
-    date
+log() { echo "[$(date '+%F %T')] $*"; }
+event() { printf '%s\tdriver\t%s\n' "$(date -Iseconds)" "$*" >> "${EVENTS}"; }
 
-    unset num_jobs
+abort_requested() { [[ -e "${MON_DIR}/ABORT" ]]; }
 
-    # ---------------------------------------------------------
-    # BRANCH 1: Fixed Array Execution (Continents / Globals)
-    # ---------------------------------------------------------
-    if [[ -v module_counts["$slurm_script"] ]]; then
-        count="${module_counts[$slurm_script]}"
-        array_spec="0-$((count - 1))"
+write_abort() {
+    # First writer wins (the gate or the monitor may already have written a more specific reason).
+    "${PY}" -m confluence.monitor abort --run-dir "${RUN_DIR}" --source driver --reason "$1" \
+        || ( set -o noclobber; printf '{"source": "driver", "reason": "%s"}\n' "$1" > "${MON_DIR}/ABORT" ) 2>/dev/null
+}
 
-        echo "Submitting array job for $slurm_script with ${count} tasks (${array_spec})"
+finish_aborted() {
+    if [[ -n "${CURRENT_ARRAY}" ]]; then
+        log "Cancelling array ${CURRENT_ARRAY}"
+        scancel "${CURRENT_ARRAY}" 2>/dev/null
+    fi
+    log "Run ${run} ABORTED: $(jq -r '.reason // .' "${MON_DIR}/ABORT" 2>/dev/null || cat "${MON_DIR}/ABORT")"
+    log "Details: ${MON_DIR}/ABORT, ${EVENTS}"
+    event "aborted"
+    echo "aborted" > "${MON_DIR}/driver.exit"
+    exit 3
+}
 
-        job_id=$(sbatch \
-            --export=OFFSET=0,INDEX_RANGE=1,MAX_LIMIT=6 \
-            --array=${array_spec}%${concurrent_jobs} \
-            {{ dirs["sh_scripts"] }}/${slurm_script})
+on_term() {
+    TERMINATING=1
+    log "Driver received SIGTERM"
+    [[ -n "${CURRENT_ARRAY}" ]] && scancel "${CURRENT_ARRAY}" 2>/dev/null
+    event "terminated"
+    echo "terminated" > "${MON_DIR}/driver.exit"
+    exit 3
+}
+trap on_term TERM
 
-        job_id_number=$(echo "$job_id" | awk '{print $4}')
+# On any exit: stop the background monitor. If the audit job could not be submitted, audit here
+# instead (skipped on SIGTERM: there is no time left before Slurm's SIGKILL).
+TERMINATING=0
+on_exit() {
+    if [[ -n "${WATCH_PID}" ]]; then
+        kill "${WATCH_PID}" 2>/dev/null
+        wait "${WATCH_PID}" 2>/dev/null
+    fi
+    if [[ ${MONITOR_ENABLED} -eq 1 && "${DRIVER_JOB_ID}" != "local" && -z "${AUDIT_JOB}" && ${TERMINATING} -eq 0 ]]; then
+        log "No audit job: auditing in the driver"
+        "${PY}" -m confluence.monitor finish --run-dir "${RUN_DIR}" --driver-job "${DRIVER_JOB_ID}"
+    fi
+}
+trap on_exit EXIT
 
-        echo "Waiting for array $job_id_number to finish..."
+# Returns 0 when the array has left the queue, 1 while any task is still queued/running.
+# squeue failures (e.g. slurmctld timeouts) are retried rather than taken to mean "finished".
+poll_gone() {
+    local id="$1" out rc tries=0 held
+    while true; do
+        out=$(squeue -h -j "${id}" -o "%i %T %R" 2>&1)
+        rc=$?
+        if [[ ${rc} -eq 0 ]]; then
+            break
+        fi
+        # Once a job ages out of slurmctld, squeue reports an invalid job id: it is gone.
+        if grep -qi "invalid job id" <<< "${out}"; then
+            return 0
+        fi
+        tries=$((tries + 1))
+        log "squeue failed (attempt ${tries}): ${out}"
+        if [[ ${tries} -ge 30 ]]; then
+            log "squeue keeps failing; assuming array ${id} is still running"
+            return 1
+        fi
+        sleep 20
+    done
 
-        while squeue -j "$job_id_number" 2>/dev/null | grep -q "$job_id_number"; do
-            job_info=$(squeue -j "${job_id_number}[]" --noheader -o "%i %T %R")
-            held_tasks=$(echo "$job_info" | grep -i "requeued held" | awk '{print $1}')
+    [[ -z "${out}" ]] && return 0
 
-            if [[ -n "$held_tasks" ]]; then
-                echo "Detected held tasks in array $job_id_number:"
-                echo "$held_tasks"
-                for task in $held_tasks; do
-                    echo "Cancelling task $task..."
-                    scancel "$task"
-                done
-            fi
-
-            sleep 10
+    held=$(awk 'tolower($0) ~ /requeued held/ {print $1}' <<< "${out}")
+    if [[ -n "${held}" ]]; then
+        log "Detected held tasks in array ${id}:"
+        echo "${held}"
+        for task in ${held}; do
+            log "Cancelling task ${task}..."
+            scancel "${task}"
         done
-
-        echo "Array $job_id_number has finished."
-        date
-        continue
     fi
+    return 1
+}
 
-    # ---------------------------------------------------------
-    # BRANCH 2: Reach-Ranged Array Job Execution
-    # ---------------------------------------------------------
-    if [[ -s "$expanded_json_file" && "$slurm_script" == "input.sh" ]]; then
-        num_jobs=$(jq length "$expanded_json_file")
-    fi
-
-    if [[ -s "$basin_json_file" && "$slurm_script" == "moi.sh" ]]; then
-        num_jobs=$(jq length "$basin_json_file")
-    fi
-
-    if [[ -s "$metroman_json_file" && "$slurm_script" == "metroman.sh" ]]; then
-        num_jobs=$(jq length "$metroman_json_file")
-    fi
-
-    if [[ -z "$num_jobs" || "$num_jobs" == "\$default_jobs" ]]; then
-        if [[ -s "$reach_json_file" ]]; then
-            num_jobs=$(jq length "$reach_json_file")
-            echo "Using reach_json_file job count ($num_jobs) for $slurm_script"
+# refresh_concurrency: picks up a change of CONCURRENT_FILE (no file = hpc.concurrent_jobs) and sets it on the
+# array in flight. Lowering the limit never stops running tasks; Slurm just starts no new ones above it.
+refresh_concurrency() {
+    local raw="" want out
+    [[ -e "${CONCURRENT_FILE}" ]] && raw=$(tr -d '[:space:]' < "${CONCURRENT_FILE}" 2>/dev/null)
+    if [[ "${raw}" != "${CONCURRENT_SEEN}" ]]; then
+        CONCURRENT_SEEN="${raw}"
+        if [[ -z "${raw}" ]]; then
+            want=${CONFIG_CONCURRENT_JOBS}
+        elif [[ "${raw}" =~ ^[1-9][0-9]{0,5}$ ]]; then
+            want=${raw}
         else
-            num_jobs=$default_jobs
-            echo "Using reaches_of_interest.json job count ($num_jobs) for $slurm_script"
+            log "WARNING: ignoring ${CONCURRENT_FILE}: '${raw}' is not a positive integer"
+            want=${concurrent_jobs}
+        fi
+        if [[ ${want} -ne ${concurrent_jobs} ]]; then
+            log "concurrent_jobs ${concurrent_jobs} -> ${want}"
+            event "concurrent_jobs ${concurrent_jobs} -> ${want}"
+            concurrent_jobs=${want}
+            THROTTLE_TRIES=0
         fi
     fi
+    if [[ -n "${CURRENT_ARRAY}" && "${ARRAY_THROTTLE}" != "${concurrent_jobs}" && ${THROTTLE_TRIES} -lt 5 ]]; then
+        if out=$(scontrol update JobId="${CURRENT_ARRAY}" ArrayTaskThrottle="${concurrent_jobs}" 2>&1); then
+            ARRAY_THROTTLE=${concurrent_jobs}
+            log "Array ${CURRENT_ARRAY} now runs at most ${concurrent_jobs} tasks at once"
+        else
+            THROTTLE_TRIES=$((THROTTLE_TRIES + 1))
+            log "scontrol could not change the task limit of array ${CURRENT_ARRAY} (attempt ${THROTTLE_TRIES}/5): ${out}"
+        fi
+    fi
+}
 
-    if [[ -z "$num_jobs" ]]; then
-        echo "Warning: No job count found for $slurm_script. Skipping."
-        continue
+# submit_array <module> <script> <offset> <index_range> <max_limit> <n_tasks> <phase> <first_idx> <last_idx>
+submit_array() {
+    local module="$1" script="$2" offset="$3" range="$4" max_limit="$5" n_tasks="$6" phase="$7" first="$8" last="$9"
+    local out rc id
+
+    abort_requested && finish_aborted
+    refresh_concurrency
+
+    out=$(sbatch --parsable \
+        --export=OFFSET=${offset},INDEX_RANGE=${range},MAX_LIMIT=${max_limit} \
+        --array=0-$((n_tasks - 1))%${concurrent_jobs} \
+        "${SCRIPTS_DIR}/${script}" 2>&1)
+    rc=$?
+    id="${out%%;*}"
+    if [[ ${rc} -ne 0 || ! "${id}" =~ ^[0-9]+$ ]]; then
+        write_abort "sbatch failed for ${script} (rc=${rc}): ${out//\"/\'}"
+        finish_aborted
     fi
 
-    if [[ {{ max_reaches | default(0) }} -ne 0 && "$num_jobs" -gt {{ max_reaches | default(0) }} ]]; then
-        echo "Limiting job count for $slurm_script from $num_jobs to {{ max_reaches | default(0) }} (test mode)"
-        num_jobs={{ max_reaches | default(0) }}
+    CURRENT_ARRAY="${id}"
+    ARRAY_THROTTLE=${concurrent_jobs}
+    THROTTLE_TRIES=0
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$(date +%s)" "${DRIVER_JOB_ID}" "${module}" "${phase}" "${id}" "${offset}" "${range}" \
+        "${n_tasks}" "${first}" "${last}" "${max_limit}" >> "${SUBMISSIONS}"
+    log "Submitted ${phase} array ${id} for ${module}: ${n_tasks} tasks (at most ${concurrent_jobs} at once), indices ${first}-${last}"
+    event "submitted ${module} ${phase} ${id} ${first}-${last}"
+
+    # The monitor may have aborted between our check and the submission: cancel what we just submitted.
+    abort_requested && finish_aborted
+}
+
+wait_array() {
+    log "Waiting for array ${CURRENT_ARRAY} to finish..."
+    while ! poll_gone "${CURRENT_ARRAY}"; do
+        touch "${MON_DIR}/driver.heartbeat"
+        abort_requested && finish_aborted
+        refresh_concurrency
+        sleep 10
+    done
+    log "Array ${CURRENT_ARRAY} has finished."
+    CURRENT_ARRAY=""
+    abort_requested && finish_aborted
+}
+
+# run_gate <module> <phase>: 0 = continue; 2 = abort (the gate wrote ABORT); anything else is a
+# gate crash, which is logged and ignored so that a monitoring bug never stops a healthy run.
+run_gate() {
+    local module="$1" phase="$2" rc
+    [[ "${GATE_ENABLED}" -eq 1 ]] || return 0
+    log "Gate: ${module} (${phase})"
+    "${PY}" -m confluence.monitor gate --run-dir "${RUN_DIR}" --module "${module}" --phase "${phase}" \
+        --driver-job "${DRIVER_JOB_ID}"
+    rc=$?
+    case ${rc} in
+        0) ;;
+        2) abort_requested || write_abort "gate requested abort for ${module} (${phase})"
+           finish_aborted ;;
+        *) log "WARNING: gate for ${module} crashed (rc=${rc}); continuing without it"
+           event "gate_crashed ${module} ${phase} rc=${rc}" ;;
+    esac
+}
+
+# run_fixed <module> <script> <n_tasks>: continent / global modules, one task per continent.
+run_fixed() {
+    local module="$1" script="$2" count="$3"
+    submit_array "${module}" "${script}" 0 1 6 "${count}" "fixed" 0 $((count - 1))
+    wait_array
+    run_gate "${module}" final
+}
+
+# run_reach <module> <script> <index_json> <index_range> <canary_tasks>: per-reach (or per-set/basin)
+# modules. index_range = index entries per array task (hpc.reach_chunks, or the module's reach_chunks).
+run_reach() {
+    local module="$1" script="$2" index_json="$3" index_range="$4" canary_tasks="$5"
+    local num_jobs start total_tasks canary_reaches
+    local target count num_tasks logical_end
+
+    if [[ ! -s "${index_json}" ]]; then
+        write_abort "index file ${index_json} for ${module} is missing or empty (did an upstream module fail?)"
+        finish_aborted
+    fi
+    num_jobs=$(jq length "${index_json}")
+    if [[ -z "${num_jobs}" || "${num_jobs}" -eq 0 ]]; then
+        write_abort "index file ${index_json} for ${module} has no entries"
+        finish_aborted
+    fi
+    log "Using $(basename "${index_json}") job count (${num_jobs}) for ${module}"
+
+    if [[ ${max_reaches} -ne 0 && ${num_jobs} -gt ${max_reaches} ]]; then
+        log "Limiting job count for ${module} from ${num_jobs} to ${max_reaches} (test mode)"
+        num_jobs=${max_reaches}
     fi
 
     start=0
-    while [ $start -lt $num_jobs ]; do
-        current_range=$index_range
-        target_reaches_per_batch=$(( batch_size * current_range ))
+    total_tasks=$(( (num_jobs + index_range - 1) / index_range ))
+    if [[ ${GATE_ENABLED} -eq 1 && ${canary_tasks} -gt 0 && ${total_tasks} -ge $((3 * canary_tasks)) ]]; then
+        canary_reaches=$((canary_tasks * index_range))
+        submit_array "${module}" "${script}" 0 "${index_range}" "${num_jobs}" "${canary_tasks}" \
+            "canary" 0 $((canary_reaches - 1))
+        wait_array
+        run_gate "${module}" canary
+        start=${canary_reaches}
+    fi
 
-        reaches_remaining=$(( num_jobs - start ))
-        if [ $reaches_remaining -gt $target_reaches_per_batch ]; then
-            current_batch_reach_count=$target_reaches_per_batch
-        else
-            current_batch_reach_count=$reaches_remaining
+    while [[ ${start} -lt ${num_jobs} ]]; do
+        target=$((batch_size * index_range))
+        count=$((num_jobs - start))
+        [[ ${count} -gt ${target} ]] && count=${target}
+        num_tasks=$(( (count + index_range - 1) / index_range ))
+        logical_end=$((start + count - 1))
+
+        submit_array "${module}" "${script}" "${start}" "${index_range}" "${num_jobs}" "${num_tasks}" \
+            "batch" "${start}" "${logical_end}"
+        wait_array
+        start=$((start + count))
+        if [[ ${start} -lt ${num_jobs} ]]; then
+            run_gate "${module}" batch
         fi
-        
-        num_tasks=$(( (current_batch_reach_count + current_range - 1) / current_range ))
-        last_task_index=$(( num_tasks - 1 ))
-        logical_end=$(( start + current_batch_reach_count - 1 ))
+    done
+    run_gate "${module}" final
+}
 
-        echo "Submitting $num_tasks tasks (Step: $current_range) for reaches $start to $logical_end"
-        
-        job_id=$(sbatch --export=OFFSET=${start},INDEX_RANGE=${current_range},MAX_LIMIT=${num_jobs} \
-               --array=0-${last_task_index}%${concurrent_jobs} \
-               {{ dirs["sh_scripts"] }}"/${slurm_script}")
-        
-        job_id_number=$(echo "$job_id" | awk '{print $4}')
+# ---------------------------------------------------------------------------------------------
+log "Run: ${run} (driver ${DRIVER_JOB_ID})"
 
-        echo "Waiting for job array $job_id_number to finish..."
+# A previous attempt's ABORT would stop this one immediately: keep it for the record and clear it.
+if [[ -e "${MON_DIR}/ABORT" ]]; then
+    mv "${MON_DIR}/ABORT" "${MON_DIR}/ABORT.$(date +%Y%m%dT%H%M%S).prev"
+    log "Moved a previous ABORT file aside"
+fi
+# A new driver starts from the config; a throttle set for an earlier driver does not carry over.
+if [[ -e "${CONCURRENT_FILE}" ]]; then
+    log "Ignoring concurrent_jobs=$(tr -d '[:space:]' < "${CONCURRENT_FILE}") set for a previous driver; using hpc.concurrent_jobs=${concurrent_jobs}"
+    rm -f "${CONCURRENT_FILE}"
+fi
+rm -f "${MON_DIR}/driver.exit"
+touch "${MON_DIR}/driver.heartbeat"
+event "started driver ${DRIVER_JOB_ID}"
 
-        while squeue -j "$job_id_number" 2>/dev/null | grep -q "$job_id_number"; do
-            job_info=$(squeue -j "${job_id_number}[]" --noheader -o "%i %T %R")
-            held_tasks=$(echo "$job_info" | grep -i "requeued held" | awk '{print $1}')
+if [[ ${MONITOR_ENABLED} -eq 1 && "${DRIVER_JOB_ID}" != "local" ]]; then
+    # Queued now, starts when this job ends (whatever the reason).
+    audit_out=$(sbatch --parsable --dependency=afterany:${DRIVER_JOB_ID} \
+        --export=ALL,DRIVER_JOB_ID=${DRIVER_JOB_ID} "${SCRIPTS_DIR}/audit.sh" 2>&1)
+    if [[ $? -eq 0 && "${audit_out%%;*}" =~ ^[0-9]+$ ]]; then
+        AUDIT_JOB="${audit_out%%;*}"
+        log "Queued audit job ${AUDIT_JOB} (runs after this driver ends)"
+        echo "${AUDIT_JOB}" > "${MON_DIR}/audit.jobid"
+    else
+        log "WARNING: could not queue the audit job (the driver will audit at the end): ${audit_out}"
+    fi
+    # Background monitor in this job. If it crashes the gates still run.
+    "${PY}" -m confluence.monitor watch --run-dir "${RUN_DIR}" --driver-job "${DRIVER_JOB_ID}" \
+        --driver-pid $$ --no-audit >> "{{ dirs['log'] }}/monitor_${DRIVER_JOB_ID}.out" 2>&1 &
+    WATCH_PID=$!
+    log "Started monitor (pid ${WATCH_PID}), log {{ dirs['log'] }}/monitor_${DRIVER_JOB_ID}.out"
+fi
 
-            if [[ -n "$held_tasks" ]]; then
-                echo "Detected held tasks in array $job_id_number:"
-                echo "$held_tasks"
-                for task in $held_tasks; do
-                    echo "Cancelling task $task..."
-                    scancel "$task"
-                done
-            fi
-            sleep 10
-        done
+{% for m in modules %}
+log "Starting submission for: {{ m.script }}"
+{% if m.kind == "fixed" %}
+run_fixed "{{ m.name }}" "{{ m.script }}" {{ m.count }}
+{% else %}
+run_reach "{{ m.name }}" "{{ m.script }}" "{{ m.index_json }}" {{ m.index_range }} {{ m.canary_tasks }}
+{% endif %}
 
-        echo "Batch $job_id_number has finished. Submitting next batch."
-        date
-
-        start=$((start + current_batch_reach_count))
-
-        if [[ "$current_batch_reach_count" -le 0 ]]; then
-            echo "Error: Batch reach count is 0. Terminating to prevent loop."
-            break
-        fi
-
-        sleep 1
-    done      
-done
-
-echo "Run $run has finished successfully."
+{% endfor %}
+event "done"
+echo "done" > "${MON_DIR}/driver.exit"
+log "Run ${run} has finished: all modules submitted and passed their gates."
+if [[ -n "${AUDIT_JOB}" ]]; then
+    log "Audit job ${AUDIT_JOB} starts now; report: ${MON_DIR}/audit.html"
+else
+    log "Audit: ${PY} -m confluence.monitor audit ${RUN_DIR}"
+fi

@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "jinja2==3.1.6",
+    "markdown>=3.11",
     "markupsafe==3.0.3",
     "netcdf4>=1.7.4",
     "numpy>=2.4.6",
@@ -36,3 +37,12 @@ select = [
     "B",
     "UP",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:anyio"

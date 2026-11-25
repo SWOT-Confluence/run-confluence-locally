@@ -5,11 +5,31 @@ if [[ -n "$MAX_LIMIT" ]]; then
     (( END_INDEX >= MAX_LIMIT )) && END_INDEX=$(( MAX_LIMIT - 1 ))
 fi
 
-{{ container_cmd.run }} run \
+{# rf_dir: directory holding RF_binary_pred_sword_*.nc, needed by the consensus dev_RF branch. #}
+{% set rf_bind = (container_cmd.bind ~ " " ~ module.rf_dir ~ ":/mnt/data/rf:ro") if module.rf_dir else "" %}
+
+{% if module.per_reach %}
+# One container call per reach so a crash on one reach doesn't lose the rest of the chunk
+# (consensus 3.0.0 raises on some all-NaN reaches).
+for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
+  cfl_unit "${idx}" {{ container_cmd.run }} run \
+    {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
+    {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
+    {{ rf_bind }} \
+    {{ optional_binds | join(' \\\n    ') }} \
+    {{ sif_dir }}/consensus.sif \
+    --mntdir /mnt/data \
+    -r /mnt/data/input/reaches.json \
+    -i ${idx}
+done
+{% else %}
+cfl_unit "${START_INDEX}-${END_INDEX}" {{ container_cmd.run }} run \
   {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
   {{ container_cmd.bind }} {{ mnt_dir }}/flpe:/mnt/data/flpe \
+  {{ rf_bind }} \
   {{ optional_binds | join(' \\\n  ') }} \
   {{ sif_dir }}/consensus.sif \
   --mntdir /mnt/data \
   -r /mnt/data/input/reaches.json \
   -i ${START_INDEX}-${END_INDEX}
+{% endif %}

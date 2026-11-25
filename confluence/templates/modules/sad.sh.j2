@@ -6,7 +6,7 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
-  {{ container_cmd.run }} run \
+  cfl_unit "${idx}" {{ container_cmd.run }} run \
     {{ container_cmd.bind }} {{ mnt_dir }}/input:/mnt/data/input \
     {{ container_cmd.bind }} {{ mnt_dir }}/flpe/sad:/mnt/data/output \
     {{ optional_binds | join(' \\\n    ') }} \
