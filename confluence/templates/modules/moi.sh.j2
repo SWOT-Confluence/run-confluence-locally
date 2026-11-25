@@ -12,6 +12,7 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     {{ container_cmd.bind }} {{ flpe_bind_dir }}:/mnt/data/flpe:ro \
     {{ container_cmd.bind }} {{ mnt_dir }}/moi:/mnt/data/output \
     {{ container_cmd.bind }} {{ module_dir }}/CalValSeparation_basin_stratified_v2.csv:/app/CalValSeparation_basin_stratified_v2.csv \
+    {{ container_cmd.bind }} {{ module_dir }}/corridors:/app/corridors:ro \
     {{ optional_binds | join(' \\\n    ') }} \
     {{ sif_dir }}/moi.sif \
     -j basin.json \
@@ -22,5 +23,6 @@ for (( idx=START_INDEX; idx<=END_INDEX; idx++ )); do
     --gage-calval-csv /app/CalValSeparation_basin_stratified_v2.csv \
     --correlation-rho {{ module.correlation_rho }} \
     --bias-prior-std {{ module.bias_prior_std }} \
+    --use-corridors \
     -i ${idx}
 done
