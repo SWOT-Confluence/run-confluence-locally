@@ -178,7 +178,12 @@ def _copy_or_download_svs(cfg: Config):
     # svs file name does not include sword version number so renaming not needed.
     svs_dir = cfg.dirs["input"] / "svs"
 
-    if cfg.svs_copy_dir is not None:
+    if cfg.svs_copy_file is not None:
+        dest = svs_dir / cfg.svs_copy_file.name
+        print(f"Copying {cfg.svs_copy_file.name}")
+        shutil.copy2(str(cfg.svs_copy_file), str(dest))
+        return dest
+    elif cfg.svs_copy_dir is not None:
         copied_files = _copy_nc_files(cfg.svs_copy_dir, svs_dir, 1)
         return copied_files[0]
     elif cfg.svs_repo_filename is not None:

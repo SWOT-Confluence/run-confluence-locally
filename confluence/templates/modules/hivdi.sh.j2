@@ -6,7 +6,7 @@ if [[ -n "$MAX_LIMIT" ]]; then
 fi
 
 export MPLBACKEND=agg
-TASK_TMPDIR=/tmp/hivdi_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+TASK_TMPDIR=/tmp/hivdi_${SLURM_JOB_ID:-$$}_${SLURM_ARRAY_TASK_ID:-0}
 mkdir -p ${TASK_TMPDIR}/arviz ${TASK_TMPDIR}/pytensor
 
 trap 'rm -rf "${TASK_TMPDIR}"' EXIT

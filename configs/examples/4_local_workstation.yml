@@ -1,0 +1,145 @@
+# Local workstation run: no slurm, apptainer only, all input data already on disk.
+#
+# The run will be created at: <root_dir>/confluence_<run_name>/
+root_dir: "/home/kandread/Projects/dawg/runs"
+run_name: "local"
+
+roi_file: "/home/kandread/Projects/dawg/data/reaches_of_interest.json"
+
+# Bind rather than copy: the sos/ and sword/ dirs hold 12 files each (v17 and
+# v17b) and the copy path asserts exactly 6. Binding also avoids duplicating
+# 268 GB. Binding swot/ requires skipping `input` and `prediagnostics`.
+swot_input_bind_dir: "/home/kandread/Projects/dawg/data/swot"
+priors_bind_dir: "/home/kandread/Projects/dawg/data/sos"
+sword_bind_dir: "/home/kandread/Projects/dawg/data/sword"
+# Named explicitly because data/svs holds more than one .nc; svs_copy_dir
+# would reject that (it asserts exactly one). Alternatively drop this and set
+# svs_repo_filename: "SVS_v1_0_1.nc" to fetch from Stuttgart DARUS instead.
+# The three svs_* options are mutually exclusive.
+svs_copy_file: "/home/kandread/Projects/dawg/data/svs/SVS_v1_0_1.nc"
+
+default_github_username: "SWOT-Confluence"
+default_repository_branch: "main"
+default_image_release_tag: 4.0.0
+
+submit_driver: True
+
+clone_repos: True
+rebuild_all_modules: False
+# sad must be rebuilt after the branch change above.
+modules_to_rebuild:
+  - "sad"
+
+scheduler: "local"
+
+# This host has no setuid apptainer starter and no usable subuid delegation,
+# so the build has to fall back to a root-mapped namespace. Apptainer also
+# could not resolve /tmp here, hence the explicit scratch dir.
+apptainer_build_args:
+  - "--ignore-subuid"
+build_tmpdir: "/home/kandread/Projects/dawg/runs/.apptainer_tmp"
+
+local:
+  # 24 cores / 91 GB here. Most modules ask for 4G, output asks for 8G.
+  concurrent_jobs: 16
+  reach_chunks: 5
+  module_concurrency:
+    output: 4
+
+modules_to_run:
+  # setfinder still has to run: reaches.json is not seeded into the run's own
+  # input dir by setup_dirs, only reaches_of_interest.json is.
+  - "expanded_setfinder"
+  - "expanded_combine_data"
+  # - "input"            # skipped: data/swot is already populated
+  - "non_expanded_setfinder"
+  - "non_expanded_combine_data"
+  # - "prediagnostics"   # skipped: data/swot has already been through it
+  - "sad"
+  # - "unconstrained_momma"
+  # - "metroman"
+  # - "metroman_consolidation"
+  # - "busboi"
+  # - "hivdi"
+  # - "sic4dvar"
+  # - "consensus"
+  # - "moi"             # would need basin.json from setfinder
+  - "validation"
+  - "output"
+
+repo_branches:
+  # sad@main is still the Julia Sad.jl, but the published sad:4.0.0 image is
+  # the Python SADnm wrapper (entrypoint /app/env/bin/python3 /app/run_sad.py).
+  # Overlaying main onto that image writes a Julia runscript that cannot run.
+  sad: "port-to-sadnm"
+  setfinder: "tedlanghorst:main"
+  busboi: "post_UAT"
+  momma: "post_UAT"
+  validation: "post_UAT"
+  hivdi: "post_UAT"
+  sic4dvar: "post_UAT"
+  consensus: "tedlanghorst:main"
+  output: "post_UAT"
+
+sword_version: "17"
+
+# time/mem are unused when scheduler is 'local' but the schema still wants them.
+module_templates:
+  expanded_setfinder:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/setfinder.sh.j2"
+    module_args:
+      reach_file: "-r reaches_of_interest.json"
+      expanded: True
+
+  non_expanded_setfinder:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/setfinder.sh.j2"
+    module_args:
+      reach_file: "-r expanded_reaches_of_interest.json"
+      expanded: False
+
+  expanded_combine_data:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/combine_data.sh.j2"
+    module_args:
+      expanded: True
+
+  non_expanded_combine_data:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/combine_data.sh.j2"
+    module_args:
+      expanded: False
+
+  sad:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/sad.sh.j2"
+
+  validation:
+    time: "06:00:00"
+    mem: "4G"
+    j2_file: "modules/validation.sh.j2"
+    module_args:
+      # Correct for SVS_v1_0_1.nc (per sad_medbow.yml). The older
+      # SVS_v1_0.5_trans_v17.nc has no reach_id_v17b, only v16 and v17 --
+      # switch back to "reach_id_v17" if running against that file.
+      reach_id_col: "reach_id_v17b"
+
+  output:
+    time: "05:00:00"
+    mem: "8G"
+    j2_file: "modules/output.sh.j2"
+    module_args:
+      # Only the groups whose modules actually ran.
+      #
+      # "sad" is deliberately included here even though official Confluence v4
+      # drops it: v4 excluded the old Sad.jl, and v5 reinstates it once the
+      # SADnm port is running. Dispatch already works (output/Append.py:300)
+      # and the sad group was verified present in the SoS results, so this is
+      # the v5 configuration, not a local deviation.
+      groups: "input sad swot validation"
