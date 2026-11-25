@@ -21,6 +21,21 @@ class HPC(BaseModel):
     reach_chunks: int = Field(..., gt=0)
 
 
+class Local(BaseModel):
+    """Workstation equivalent of `HPC`.
+
+    There is no batch_size analogue: batching exists on the HPC side to keep
+    individual slurm arrays to a sane size, which is meaningless when we hold
+    the whole task list in one process.
+    """
+
+    # Defaults to one worker per core at setup time if left unset.
+    concurrent_jobs: int | None = Field(None, gt=0)
+    reach_chunks: int = Field(1, gt=0)
+    # Per-module override, for the memory-hungry modules (e.g. {"output": 2}).
+    module_concurrency: dict[str, int] = Field(default_factory=dict)
+
+
 class ModuleTemplate(BaseModel):
     time: str
     mem: str
@@ -86,6 +101,9 @@ class Config(BaseModel):
     sword_zenodo_doi: str | None = None
 
     svs_copy_dir: DirectoryPath | None = None
+    # Explicit path to a single SVS file. Preferred over svs_copy_dir when the
+    # source directory holds more than one .nc, which svs_copy_dir rejects.
+    svs_copy_file: FilePath | None = None
     svs_repo_filename: str | None = None
 
     default_github_username: str
@@ -102,6 +120,14 @@ class Config(BaseModel):
     container_platform: Literal["apptainer"] = "apptainer"
     submit_driver: bool
 
+    # Extra flags for `apptainer build`. A rootless host with no setuid starter
+    # and no usable subuid delegation needs ["--ignore-subuid"] to fall back to
+    # a root-mapped namespace.
+    apptainer_build_args: list[str] = Field(default_factory=list)
+    # Build scratch. Apptainer needs several GB per image and cannot always
+    # resolve a /tmp that is a tmpfs or a bind mount.
+    build_tmpdir: Path | None = None
+
     modules_to_run: list[str]
 
     rebuild_all_modules: bool
@@ -110,7 +136,9 @@ class Config(BaseModel):
 
     repo_branches: dict[str, str] = Field(default_factory=dict)
 
-    hpc: HPC = Field(default_factory=HPC)
+    scheduler: Literal["slurm", "local"] = "slurm"
+    hpc: HPC | None = None
+    local: Local = Field(default_factory=Local)
     module_templates: dict[str, ModuleTemplate]
 
     # Will be populated during run setup.
@@ -126,6 +154,7 @@ class Config(BaseModel):
         "sword_bind_dir",
         "sword_copy_dir",
         "svs_copy_dir",
+        "svs_copy_file",
         mode="before",
     )
     @classmethod
@@ -146,7 +175,7 @@ class Config(BaseModel):
         exclusive_groups = [
             ("priors_bind_dir", "priors_copy_dir", "priors_zenodo_doi"),
             ("sword_bind_dir", "sword_copy_dir", "sword_zenodo_doi"),
-            ("svs_copy_dir", "svs_repo_filename"),
+            ("svs_copy_dir", "svs_copy_file", "svs_repo_filename"),
         ]
 
         for attr_group in exclusive_groups:
@@ -213,6 +242,16 @@ class Config(BaseModel):
 
         if offending:
             raise ValueError(f"{offending} bind paths are not on the same filesystem as the root_dir.")
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_scheduler(self):
+        if self.scheduler == "slurm" and self.hpc is None:
+            raise ValueError("scheduler is 'slurm' but no `hpc` block was given.")
+
+        if self.scheduler == "local" and self.hpc is not None:
+            print("scheduler is 'local' so the `hpc` block will be ignored.")
 
         return self
 

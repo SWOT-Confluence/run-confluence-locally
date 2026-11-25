@@ -315,6 +315,8 @@ def _build_worker(
     sif_path: Path,
     def_name: str,
     log_dir: Path,
+    build_args: list[str],
+    build_tmpdir: Path | None,
 ):
     match container_platform:
         case "apptainer":
@@ -323,6 +325,7 @@ def _build_worker(
                 "build",
                 "--force",
                 "--ignore-fakeroot-command",
+                *build_args,
                 str(sif_path),
                 def_name,
             ]
@@ -335,6 +338,12 @@ def _build_worker(
     env = os.environ.copy()
     env["APPTAINER_CACHEDIR"] = str(worker_cache_dir)
     env["SINGULARITY_CACHEDIR"] = str(worker_cache_dir)
+
+    if build_tmpdir is not None:
+        worker_tmp = Path(build_tmpdir) / mod_name
+        worker_tmp.mkdir(parents=True, exist_ok=True)
+        env["APPTAINER_TMPDIR"] = str(worker_tmp)
+        env["SINGULARITY_TMPDIR"] = str(worker_tmp)
 
     log_file_path = log_dir / f"{mod_name}_build.log"
 
@@ -361,8 +370,11 @@ def create_sifs(
     container_platform: str,
     sif_dir: str | Path,
     repo_dir: str | Path,
+    build_args: list[str] | None = None,
+    build_tmpdir: Path | None = None,
     max_workers: int = None,
 ):
+    build_args = build_args or []
     sif_dir = _validate_dir(sif_dir)
     repo_dir = _validate_dir(repo_dir)
 
@@ -391,6 +403,8 @@ def create_sifs(
                             sif_path,
                             def_file,
                             log_dir,
+                            build_args,
+                            build_tmpdir,
                         )
                     ] = sub_name
             else:
@@ -405,6 +419,8 @@ def create_sifs(
                         sif_path,
                         def_file,
                         log_dir,
+                        build_args,
+                        build_tmpdir,
                     )
                 ] = mod
 
@@ -461,6 +477,13 @@ def setup_modules(cfg: Config):
     print("\n")
     if modules_to_build:
         create_defs(modules_to_build, cfg.dirs["modules"], cfg.default_image_release_tag)
-        create_sifs(modules_to_build, cfg.container_platform, cfg.dirs["sif"], cfg.dirs["modules"])
+        create_sifs(
+            modules_to_build,
+            cfg.container_platform,
+            cfg.dirs["sif"],
+            cfg.dirs["modules"],
+            build_args=cfg.apptainer_build_args,
+            build_tmpdir=cfg.build_tmpdir,
+        )
     else:
         print("Skipping module rebuild.")
